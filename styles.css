@@ -2048,6 +2048,46 @@ svg {
   display: none;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(16px, 3vw, 28px);
+}
+
+.hero-call-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper-strong);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background-color 160ms var(--ease-standard);
+}
+
+.hero-call-link:hover {
+  background: var(--chocolate);
+}
+
+.visit-call {
+  display: inline-flex;
+  margin: 0 0 18px;
+}
+
+.closing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin: clamp(28px, 4vw, 44px) 0 0;
+}
+
 .hero-figure {
   margin: clamp(32px, 5vw, 52px) 0 0;
   overflow: hidden;

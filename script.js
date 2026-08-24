@@ -817,6 +817,9 @@
     }
   }
 
+  const OPENING_HOUR = 6;
+  const CLOSING_HOUR = 23;
+
   function isWhatsAppHour() {
     try {
       const hour = Number(
@@ -826,9 +829,10 @@
           timeZone: 'Europe/Tirane',
         }).format(new Date())
       );
-      return hour >= 18;
+      return hour >= OPENING_HOUR && hour < CLOSING_HOUR;
     } catch {
-      return new Date().getHours() >= 18;
+      const hour = new Date().getHours();
+      return hour >= OPENING_HOUR && hour < CLOSING_HOUR;
     }
   }
 
