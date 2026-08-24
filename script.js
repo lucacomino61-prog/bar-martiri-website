@@ -40,6 +40,7 @@
   const storyTitleEl = document.querySelector('[data-story-title]');
   const storyBodyEl = document.querySelector('[data-story-body]');
   const whatsappButton = document.querySelector('[data-whatsapp-button]');
+  const siteHeader = document.querySelector('.site-header');
   const chatMessagesEl = document.querySelector('[data-chat-messages]');
   const chatEmptyEl = document.querySelector('[data-chat-empty]');
   const chatFormEl = document.querySelector('[data-chat-form]');
@@ -188,7 +189,7 @@
     'Sherbimet e Bar Martiri': { sq: 'Shërbimet e Bar Martiri', it: 'Servizi di Bar Martiri', en: 'Bar Martiri services' },
     'Spille · Shqipëri': { sq: 'Spille · Shqipëri', it: 'Spille · Albania', en: 'Spille · Albania' },
     'Akullore në Bar Martiri': { sq: 'Akullore në Bar Martiri', it: 'Gelato al Bar Martiri', en: 'Ice cream at Bar Martiri' },
-    'Akullore e freskët pranë detit.': { sq: 'Akullore e freskët pranë detit.', it: 'Gelato fresco vicino al mare.', en: 'Fresh ice cream by the sea.' },
+    'Akullore e freskët buzë detit në Spille.': { sq: 'Akullore e freskët buzë detit në Spille.', it: 'Gelato fresco in riva al mare a Spille.', en: 'Fresh ice cream by the sea in Spille.' },
     'Vanilje e freskët, e servirur në kaush krokant për një pushim të ëmbël gjatë ditëve të verës në Spille.': { sq: 'Vanilje e freskët, e servirur në kaush krokant për një pushim të ëmbël gjatë ditëve të verës në Spille.', it: 'Vaniglia fresca servita in un cono croccante, per una dolce pausa nelle giornate estive a Spille.', en: 'Fresh vanilla served in a crisp cone for a sweet break during summer days in Spille.' },
     'Informacion për akulloren': { sq: 'Informacion për akulloren', it: 'Informazioni sul gelato', en: 'Ice cream information' },
     'Shërbehet e freskët': { sq: 'Shërbehet e freskët', it: 'Servito fresco', en: 'Served fresh' },
@@ -1262,6 +1263,26 @@
     renderBasket();
   }
 
+  const SCROLL_RESTORE_KEY = 'barMartiri.scrollRestore.v1';
+
+  function restoreScrollAfterLanguageSwitch() {
+    let saved = null;
+    try {
+      saved = sessionStorage.getItem(SCROLL_RESTORE_KEY);
+      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
+    } catch {
+      return;
+    }
+    const top = Number(saved);
+    if (!Number.isFinite(top) || top <= 0) return;
+    // The pinned flavour section sets the page height, so wait until layout has
+    // settled before jumping, and do it instantly rather than smooth-scrolling.
+    const jump = () => window.scrollTo({ top, behavior: 'instant' });
+    jump();
+    window.setTimeout(jump, 120);
+    window.addEventListener('load', () => window.setTimeout(jump, 60), { once: true });
+  }
+
   function detectBrowserLanguage() {
     const candidates = navigator.languages?.length ? navigator.languages : [navigator.language || ''];
     for (const candidate of candidates) {
@@ -1309,6 +1330,7 @@
     if (elsewhere && source === 'guessed') offerLanguage(initialLanguage, languagePath);
     void refreshProducts();
     void refreshSunbedPrice();
+    restoreScrollAfterLanguageSwitch();
     scheduleStoryMotion();
   }
 
@@ -1361,6 +1383,15 @@
           // Navigation still applies when storage is unavailable.
         }
         writeCookie(LANGUAGE_COOKIE_NAME, language);
+        // Switching language is a full navigation, so the reader lands at the top
+        // of the new page. Someone who scrolled to the address and then wanted it
+        // in their own language had to scroll all the way back down. Carry the
+        // position across and restore it once the new page is laid out.
+        try {
+          sessionStorage.setItem(SCROLL_RESTORE_KEY, String(Math.round(window.scrollY)));
+        } catch {
+          // Restoring is a nicety; navigate regardless.
+        }
         window.location.assign(languagePath);
         return;
       }
@@ -2043,6 +2074,7 @@
     document.querySelector('.site-header')?.setAttribute('inert', '');
     dock?.classList.remove('is-compact');
     dock?.classList.remove('is-out');
+    siteHeader?.classList.remove('is-out');
     setDockActive(name);
 
     if (name === 'menu') {
@@ -2167,7 +2199,11 @@
     if (Math.abs(delta) > 5) {
       dock?.classList.toggle('is-compact', delta > 0 && nextScrollY > 90);
       if (!isPanelScroll) {
-        dock?.classList.toggle('is-out', delta > 0 && nextScrollY > 260);
+        const hide = delta > 0 && nextScrollY > 260;
+        dock?.classList.toggle('is-out', hide);
+        // Same rule for the header, so the language switcher is always one
+        // upward scroll away instead of gone for the rest of the page.
+        siteHeader?.classList.toggle('is-out', hide);
       }
     }
     if (isPanelScroll) lastPanelScrollY = nextScrollY;
