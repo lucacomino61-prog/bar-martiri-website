@@ -62,6 +62,8 @@ const locales = {
   },
 };
 
+const ALL_OG_LOCALES = ['sq_AL', ...Object.values(locales).map((l) => l.ogLocale)];
+
 for (const [language, locale] of Object.entries(locales)) {
   const canonical = `https://www.barmartiri.com${locale.path}`;
   let page = source
@@ -81,7 +83,7 @@ for (const [language, locale] of Object.entries(locales)) {
       /<meta property="og:locale" content="sq_AL">[\s\S]*?<meta property="og:locale:alternate" content="en_GB">/,
       [
         `<meta property="og:locale" content="${locale.ogLocale}">`,
-        ...['sq_AL', 'it_IT', 'en_GB']
+        ...ALL_OG_LOCALES
           .filter((tag) => tag !== locale.ogLocale)
           .map((tag) => `    <meta property="og:locale:alternate" content="${tag}">`),
       ].join('\n')
