@@ -349,15 +349,24 @@
       let bodyIt = lastLoadedStory?.bodyIt || '';
       let titleEn = lastLoadedStory?.titleEn || '';
       let bodyEn = lastLoadedStory?.bodyEn || '';
+      let translationFailed = false;
       try {
         const translated = await translateToItEn([titleSq, bodySq]);
         [titleIt, bodyIt] = translated.it;
         [titleEn, bodyEn] = translated.en;
       } catch {
-        // Translation isn't set up yet — save the Albanian text anyway.
+        // Save the Albanian text anyway rather than blocking the admin, but do
+        // not stay quiet about it: swallowing this silently is why the story sat
+        // untranslated -- the save said "u ruajt" while it/en stayed empty and
+        // the About section never appeared on /it/ or /en/.
+        translationFailed = true;
       }
       lastLoadedStory = await store.saveStory({ titleSq, bodySq, titleIt, bodyIt, titleEn, bodyEn });
-      if (storyStatus) storyStatus.textContent = 'Historia u ruajt.';
+      if (storyStatus) {
+        storyStatus.textContent = translationFailed
+          ? 'Historia u ruajt vetëm në shqip — përkthimi nuk u krye, ndaj nuk shfaqet te /it/ dhe /en/.'
+          : 'Historia u ruajt.';
+      }
       window.BAR_MARTIRI_INDEXNOW?.submit();
     } catch (error) {
       setError(storyError, error.message || 'Historia nuk mund të ruhet.');
@@ -1149,6 +1158,7 @@
       if (pendingImage && store.isRemote()) {
         product.image = await store.uploadImage(pendingImage.blob, pendingImage.name);
       }
+      let productTranslationFailed = false;
       try {
         const translated = await translateToItEn([product.name, product.description]);
         product.translations = {
@@ -1156,9 +1166,10 @@
           en: { name: translated.en[0], description: translated.en[1] },
         };
       } catch {
-        // Translation isn't set up yet (or DeepL is briefly unavailable) —
-        // save the Albanian text anyway rather than blocking the admin.
-        // Re-saving later will fill in it/en once translation is configured.
+        // Save the Albanian text anyway rather than blocking the admin, but
+        // surface it: a silent failure here leaves the product untranslated on
+        // /it/ and /en/ with nothing to indicate it.
+        productTranslationFailed = true;
       }
       const savedProduct = await store.saveProduct(product);
       const existingIndex = products.findIndex((item) => item.id === savedProduct.id);
@@ -1167,6 +1178,13 @@
       products.sort((left, right) => Number(left.sortOrder) - Number(right.sortOrder));
       renderProducts();
       resetEditor();
+      // resetEditor clears the message slot, so report after it. There is no
+      // separate status element on this form, and a translation that silently
+      // did nothing is worth the admin seeing.
+      if (productTranslationFailed) {
+        productError.textContent =
+          'Produkti u ruajt vetëm në shqip — përkthimi nuk u krye, ndaj emri dhe përshkrimi nuk shfaqen te /it/ dhe /en/.';
+      }
       window.BAR_MARTIRI_INDEXNOW?.submit();
     } catch (error) {
       productError.textContent =
