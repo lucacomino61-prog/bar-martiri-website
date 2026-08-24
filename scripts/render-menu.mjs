@@ -8,6 +8,20 @@ const targetRoot = dirFlagIndex !== -1
   ? resolve(projectRoot, process.argv[dirFlagIndex + 1])
   : projectRoot;
 
+// This script injects built output (the product grid, review copy, the sunbed
+// price) into the page HTML. Pointed at the project root it rewrites the
+// COMMITTED source files, turning a 43KB source page into a 97KB build
+// artifact -- easy to do by accident and easy to commit without noticing.
+// `npm run build:vercel` always passes --dir dist. Require the flag, or an
+// explicit opt-in for the rare case where rewriting source is intended.
+if (targetRoot === projectRoot && !process.argv.includes('--allow-source-write')) {
+  console.error('render-menu writes build output into the pages it is given.');
+  console.error('Refusing to rewrite the committed source in place.');
+  console.error('  Build output:  node scripts/render-menu.mjs --dir dist');
+  console.error('  Really source: node scripts/render-menu.mjs --allow-source-write');
+  process.exit(1);
+}
+
 const LOCALES = ['sq', 'it', 'en'];
 const LOCALE_TAG = { sq: 'sq-AL', it: 'it-IT', en: 'en-GB' };
 const PRODUCTS_LABEL = { sq: 'produkte', it: 'prodotti', en: 'products' };
@@ -148,6 +162,73 @@ async function fetchReviewSummary() {
     console.warn(`Review summary fetch failed, using defaults: ${error.message}`);
     return DEFAULT_REVIEWS;
   }
+}
+
+const DEFAULT_SETTINGS = { sunbedPrice: 700, sunbedCurrency: 'ALL' };
+const SUNBED_PER_DAY = { sq: 'në ditë', it: 'al giorno', en: 'per day' };
+
+async function fetchSiteSettings() {
+  const configSource = await readFile(resolve(projectRoot, 'supabase-config.js'), 'utf8');
+  const sandbox = { BAR_MARTIRI_SUPABASE: null };
+  new Function('window', configSource)(sandbox);
+  const config = sandbox.BAR_MARTIRI_SUPABASE;
+  try {
+    const query = new URLSearchParams({ id: 'eq.main', select: 'sunbed_price,sunbed_currency' });
+    const response = await fetch(`${config.url}/rest/v1/site_settings?${query.toString()}`, {
+      headers: { apikey: config.publishableKey, Authorization: `Bearer ${config.publishableKey}` },
+    });
+    if (!response.ok) throw new Error(`Supabase request failed with ${response.status}`);
+    const row = (await response.json())?.[0];
+    if (!row) throw new Error('No site settings row found');
+    const price = Number.parseInt(row.sunbed_price, 10);
+    return {
+      sunbedPrice: Number.isFinite(price) && price >= 0 ? price : DEFAULT_SETTINGS.sunbedPrice,
+      sunbedCurrency: String(row.sunbed_currency || '').trim() || DEFAULT_SETTINGS.sunbedCurrency,
+    };
+  } catch (error) {
+    console.warn(`Site settings fetch failed: ${error.message}`);
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+// Put the price in the served HTML so crawlers and no-JS visitors see it. The
+// runtime fetch in script.js corrects it between deploys when it is edited
+// from /admin.
+function injectSunbedPrice(html, settings, language) {
+  const pattern = /<p class="service-price" data-sunbed-price[^>]*><\/p>/;
+  if (!pattern.test(html)) throw new Error('Could not find the sunbed price placeholder.');
+  const perDay = SUNBED_PER_DAY[language] || SUNBED_PER_DAY.sq;
+  const text = `${settings.sunbedPrice} ${settings.sunbedCurrency} ${perDay}`;
+  return html.replace(pattern, `<p class="service-price" data-sunbed-price>${escapeHtml(text)}</p>`);
+}
+
+// An explicit, honest Offer for the headline product. Unlike the review markup
+// that used to live here, this is first-party factual data about our own
+// service, which is exactly what Offer is for.
+function injectSunbedOffer(html, settings) {
+  const businessMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  if (!businessMatch) throw new Error('Could not find the JSON-LD script block for the sunbed offer.');
+  const data = JSON.parse(businessMatch[1]);
+  const businessNode = data['@graph']?.find((node) => {
+    const type = node['@type'];
+    return Array.isArray(type) ? type.includes('BarOrPub') : type === 'BarOrPub';
+  });
+  if (!businessNode) throw new Error('Could not find the business node in the JSON-LD graph.');
+  businessNode.makesOffer = [
+    {
+      '@type': 'Offer',
+      itemOffered: { '@type': 'Service', name: 'Sunbed', serviceType: 'Beach sunbed rental' },
+      price: String(settings.sunbedPrice),
+      priceCurrency: settings.sunbedCurrency,
+      unitText: 'day',
+      availableAtOrFrom: { '@id': 'https://www.barmartiri.com/#business' },
+    },
+  ];
+  const serialized = JSON.stringify(data, null, 2)
+    .split('\n')
+    .map((line) => `      ${line}`)
+    .join('\n');
+  return html.replace(businessMatch[0], `<script type="application/ld+json">\n${serialized}\n    </script>`);
 }
 
 function formatVerifiedDate(dateString, locale) {
@@ -365,6 +446,8 @@ try {
 }
 
 const reviewSummary = await fetchReviewSummary();
+const siteSettings = await fetchSiteSettings();
+console.log(`Sunbed price: ${siteSettings.sunbedPrice} ${siteSettings.sunbedCurrency}/day.`);
 
 const pages = {
   sq: 'index.html',
@@ -380,6 +463,8 @@ for (const language of LOCALES) {
   html = injectProductGrid(html, gridHtml);
   html = injectMenuSchema(html, menuSchema);
   html = injectReviews(html, reviewSummary, language);
+  html = injectSunbedPrice(html, siteSettings, language);
+  html = injectSunbedOffer(html, siteSettings);
   await writeFile(filePath, html);
 }
 

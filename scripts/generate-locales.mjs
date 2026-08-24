@@ -6,7 +6,7 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = await readFile(resolve(projectRoot, 'index.html'), 'utf8');
 const publicScript = await readFile(resolve(projectRoot, 'script.js'), 'utf8');
 const uiTextMatch = publicScript.match(
-  /const UI_TEXT = Object\.freeze\((\{[\s\S]*?\})\);\n\n  const DYNAMIC_TEXT/
+  /const UI_TEXT = Object\.freeze\((\{[\s\S]*?\})\);\r?\n\r?\n\s*const DYNAMIC_TEXT/
 );
 if (!uiTextMatch) throw new Error('Could not extract the public UI translations.');
 const uiText = Function(`"use strict"; return (${uiTextMatch[1]});`)();

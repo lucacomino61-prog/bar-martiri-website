@@ -73,6 +73,9 @@
   const storyForm = document.querySelector('[data-story-form]');
   const storyError = document.querySelector('[data-story-error]');
   const storyStatus = document.querySelector('[data-story-status]');
+  const settingsForm = document.querySelector('[data-settings-form]');
+  const settingsError = document.querySelector('[data-settings-error]');
+  const settingsStatus = document.querySelector('[data-settings-status]');
   const chatConversationsList = document.querySelector('[data-chat-conversations-list]');
   const chatConversationsEmpty = document.querySelector('[data-chat-conversations-empty]');
   const refreshChatsButton = document.querySelector('[data-refresh-chats]');
@@ -109,6 +112,7 @@
     analytics: { eyebrow: 'Statistikat', title: 'Analitika' },
     gallery: { eyebrow: 'Faqja', title: 'Galeria' },
     story: { eyebrow: 'Faqja', title: 'Historia' },
+    settings: { eyebrow: 'Faqja', title: 'Çmimet' },
   };
 
   document.querySelectorAll('[data-admin-view-tab]').forEach((tab) => {
@@ -142,6 +146,7 @@
       if (view === 'analytics') void loadAnalyticsPanel();
       if (view === 'gallery') void loadGalleryPanel();
       if (view === 'story') void loadStoryPanel();
+      if (view === 'settings') void loadSettingsPanel();
     });
   });
 
@@ -282,6 +287,47 @@
       setError(storyError, 'Historia nuk mund të ngarkohet.');
     }
   }
+
+  async function loadSettingsPanel() {
+    if (!store?.getSettings || !settingsForm) return;
+    try {
+      const settings = await store.getSettings();
+      settingsForm.elements.sunbedPrice.value = settings.sunbedPrice;
+      settingsForm.elements.sunbedCurrency.value = settings.sunbedCurrency;
+    } catch {
+      setError(settingsError, 'Çmimi nuk mund të ngarkohet.');
+    }
+  }
+
+  settingsForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setError(settingsError, '');
+    if (settingsStatus) settingsStatus.textContent = '';
+
+    const sunbedPrice = Number.parseInt(settingsForm.elements.sunbedPrice.value, 10);
+    const sunbedCurrency = settingsForm.elements.sunbedCurrency.value.trim();
+
+    if (!Number.isFinite(sunbedPrice) || sunbedPrice < 0) {
+      setError(settingsError, 'Shkruaj një çmim të vlefshëm.');
+      return;
+    }
+    if (!sunbedCurrency) {
+      setError(settingsError, 'Shkruaj monedhën.');
+      return;
+    }
+
+    const submitButton = settingsForm.querySelector('button[type="submit"]');
+    try {
+      if (submitButton) submitButton.disabled = true;
+      await store.saveSettings({ sunbedPrice, sunbedCurrency });
+      if (settingsStatus) settingsStatus.textContent = 'Çmimi u ruajt.';
+      window.BAR_MARTIRI_INDEXNOW?.submit();
+    } catch (error) {
+      setError(settingsError, error.message || 'Çmimi nuk mund të ruhet.');
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
+  });
 
   storyForm?.addEventListener('submit', async (event) => {
     event.preventDefault();

@@ -75,6 +75,43 @@
     en: 'en-GB',
   });
 
+  // The sunbed day rate is editable from /admin, so it is fetched rather than
+  // hardcoded. The build injects the same value into the static HTML for
+  // crawlers; this keeps the page correct between deploys.
+  let sunbedSettings = null;
+
+  async function refreshSunbedPrice() {
+    if (!supabaseConfig.url || !supabaseConfig.publishableKey) return;
+    try {
+      const response = await fetch(
+        `${supabaseConfig.url}/rest/v1/site_settings?select=sunbed_price,sunbed_currency&id=eq.main`,
+        {
+          headers: {
+            apikey: supabaseConfig.publishableKey,
+            Authorization: `Bearer ${supabaseConfig.publishableKey}`,
+          },
+        }
+      );
+      if (!response.ok) return;
+      const rows = await response.json();
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (!row) return;
+      const price = Number.parseInt(row.sunbed_price, 10);
+      if (!Number.isFinite(price) || price < 0) return;
+      sunbedSettings = { price, currency: String(row.sunbed_currency || 'ALL').trim() || 'ALL' };
+      renderSunbedPrice();
+    } catch {
+      // Leave whatever the build injected; a stale price beats no price.
+    }
+  }
+
+  function renderSunbedPrice() {
+    const slot = document.querySelector('[data-sunbed-price]');
+    if (!slot || !sunbedSettings) return;
+    slot.textContent = `${sunbedSettings.price} ${sunbedSettings.currency} ${dynamicText('sunbedPerDay')}`;
+    slot.hidden = false;
+  }
+
   const GALLERY_ALT = Object.freeze({
     sq: 'Bar Martiri në Spille, Shqipëri — foto',
     it: 'Bar Martiri a Spille, Albania — foto',
@@ -248,6 +285,7 @@
     emptyCategory: { sq: 'Produktet e kësaj kategorie do të shtohen së shpejti.', it: 'I prodotti di questa categoria saranno aggiunti presto.', en: 'Products in this category will be added soon.' },
     noResults: { sq: 'Nuk u gjet asnjë produkt. Provo një emër tjetër.', it: 'Nessun prodotto trovato. Prova un altro nome.', en: 'No products found. Try another name.' },
     unnamedProduct: { sq: 'Pa emër', it: 'Senza nome', en: 'Unnamed' },
+    sunbedPerDay: { sq: 'në ditë', it: 'al giorno', en: 'per day' },
     reviewVerifiedPrefix: { sq: 'Vlerësimi, i verifikuar për herë të fundit më', it: 'La valutazione, verificata l’ultima volta il', en: 'The rating, last verified on' },
     reviewBasedOnSuffix: { sq: 'bazohet në', it: 'si basa su', en: 'is based on' },
     reviewCountSuffix: { sq: 'vlerësime në Google.', it: 'recensioni su Google.', en: 'Google reviews.' },
@@ -1166,6 +1204,7 @@
     }
     renderReviews();
     renderStory();
+    renderSunbedPrice();
     renderBasket();
   }
 
@@ -1215,6 +1254,7 @@
     applyLanguage(routeLanguage && LANGUAGE_LOCALES[routeLanguage] ? routeLanguage : (elsewhere ? 'sq' : initialLanguage));
     if (elsewhere && source === 'guessed') offerLanguage(initialLanguage, languagePath);
     void refreshProducts();
+    void refreshSunbedPrice();
     scheduleStoryMotion();
   }
 

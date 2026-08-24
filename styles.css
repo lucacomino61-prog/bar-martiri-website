@@ -2027,6 +2027,18 @@ svg {
   cursor: pointer;
 }
 
+.search-intro-features .service-price {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.search-intro-features .service-price[hidden] {
+  display: none;
+}
+
 .language-offer {
   position: fixed;
   z-index: 69;
