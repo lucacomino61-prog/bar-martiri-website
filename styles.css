@@ -996,7 +996,8 @@ svg {
 .footer-meta {
   display: flex;
   justify-content: space-between;
-  padding: 26px var(--page-pad) calc(var(--dock-height) + max(28px, env(safe-area-inset-bottom)));
+  padding: 26px var(--page-pad)
+    calc(var(--dock-height) + 52px + max(48px, env(safe-area-inset-bottom)));
   color: var(--ink-soft);
   font-size: 12px;
   text-transform: uppercase;
@@ -2664,7 +2665,7 @@ body:has(.dock-panel.is-open) .cookie-banner {
   }
 
   .footer-meta {
-    padding-bottom: calc(var(--dock-height) + max(24px, env(safe-area-inset-bottom)));
+    padding-bottom: calc(var(--dock-height) + 52px + max(44px, env(safe-area-inset-bottom)));
   }
 }
 
