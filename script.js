@@ -75,6 +75,23 @@
     en: 'en-GB',
   });
 
+  const GALLERY_ALT = Object.freeze({
+    sq: 'Bar Martiri në Spille, Shqipëri — foto',
+    it: 'Bar Martiri a Spille, Albania — foto',
+    en: 'Bar Martiri in Spille, Albania — photo',
+  });
+
+  function galleryFallbackAlt(index) {
+    const base = GALLERY_ALT[currentLanguage] || GALLERY_ALT.sq;
+    return `${base} ${index + 1}`;
+  }
+
+  const LANGUAGE_OFFER = Object.freeze({
+    sq: { label: 'Kjo faqe disponohet edhe në shqip.', accept: 'Shiko në shqip', dismiss: 'Mbyll' },
+    it: { label: 'Questa pagina è disponibile anche in italiano.', accept: 'Vedi in italiano', dismiss: 'Chiudi' },
+    en: { label: 'This page is also available in English.', accept: 'View in English', dismiss: 'Dismiss' },
+  });
+
   const SEO_TEXT = Object.freeze({
     sq: {
       title: 'Bar Martiri Spille | Akullore dhe Shezlone Pranë Detit',
@@ -680,7 +697,7 @@
     if (!supabaseConfig.url || !supabaseConfig.publishableKey || !galleryGridEl) return;
     try {
       const response = await fetch(
-        `${supabaseConfig.url}/rest/v1/gallery_images?select=image_url&order=sort_order.asc`,
+        `${supabaseConfig.url}/rest/v1/gallery_images?select=*&order=sort_order.asc`,
         {
           headers: {
             apikey: supabaseConfig.publishableKey,
@@ -693,14 +710,18 @@
       if (!Array.isArray(rows) || !rows.length) return;
 
       galleryGridEl.replaceChildren();
-      rows.forEach((row) => {
+      rows.forEach((row, index) => {
         if (!row.image_url) return;
         const figure = document.createElement('figure');
         figure.className = 'gallery-item';
         const img = document.createElement('img');
         img.src = row.image_url;
-        img.alt = '';
+        // These are the only photographs of the place on the site. An empty alt
+        // keeps them out of image search entirely, so prefer a real caption from
+        // the CMS and fall back to a truthful localized description.
+        img.alt = String(row.alt_text || row.caption || '').trim() || galleryFallbackAlt(index);
         img.loading = 'lazy';
+        img.decoding = 'async';
         figure.append(img);
         galleryGridEl.append(figure);
       });
@@ -1157,31 +1178,82 @@
     return 'sq';
   }
 
+  // Returns both the language and WHERE it came from. The source matters: a
+  // language the visitor explicitly picked may redirect, a language merely
+  // guessed from navigator.languages must not (see initializeLanguage).
   function getInitialLanguage() {
     const routeLanguage = document.documentElement.dataset.initialLanguage;
-    if (LANGUAGE_LOCALES[routeLanguage]) return routeLanguage;
+    if (LANGUAGE_LOCALES[routeLanguage]) return { language: routeLanguage, source: 'route' };
     const cookieLanguage = readCookie(LANGUAGE_COOKIE_NAME);
-    if (LANGUAGE_LOCALES[cookieLanguage]) return cookieLanguage;
+    if (LANGUAGE_LOCALES[cookieLanguage]) return { language: cookieLanguage, source: 'chosen' };
     try {
       const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
-      if (LANGUAGE_LOCALES[savedLanguage]) return savedLanguage;
+      if (LANGUAGE_LOCALES[savedLanguage]) return { language: savedLanguage, source: 'chosen' };
     } catch {
       // The language switcher remains available when storage is unavailable.
     }
-    return detectBrowserLanguage();
+    return { language: detectBrowserLanguage(), source: 'guessed' };
   }
 
   function initializeLanguage() {
-    const initialLanguage = getInitialLanguage();
+    const { language: initialLanguage, source } = getInitialLanguage();
     const languagePath = SEO_TEXT[initialLanguage]?.path;
     const routeLanguage = document.documentElement.dataset.initialLanguage;
-    if (!routeLanguage && languagePath && window.location.pathname !== languagePath) {
+    const elsewhere = !routeLanguage && languagePath && window.location.pathname !== languagePath;
+
+    // Only a language the visitor actually chose earns a redirect. "/" is our
+    // canonical and hreflang x-default, and it used to bounce anyone whose
+    // browser reported a non-Albanian locale -- including Googlebot, which
+    // renders with an English locale. That made the default page redirect away
+    // from itself and put its indexing at risk. Guessed languages now get a
+    // dismissible suggestion instead, so "/" stays a real, crawlable page.
+    if (elsewhere && source === 'chosen') {
       window.location.replace(languagePath);
       return;
     }
-    applyLanguage(initialLanguage);
+
+    applyLanguage(routeLanguage && LANGUAGE_LOCALES[routeLanguage] ? routeLanguage : (elsewhere ? 'sq' : initialLanguage));
+    if (elsewhere && source === 'guessed') offerLanguage(initialLanguage, languagePath);
     void refreshProducts();
     scheduleStoryMotion();
+  }
+
+  // Non-blocking "this page is also available in X" bar. Replaces the old
+  // automatic redirect; keeps the visitor one tap from their own language.
+  function offerLanguage(language, languagePath) {
+    const copy = LANGUAGE_OFFER[language];
+    if (!copy || document.querySelector('[data-language-offer]')) return;
+
+    const bar = document.createElement('aside');
+    bar.className = 'language-offer';
+    bar.setAttribute('data-language-offer', '');
+    bar.lang = LANGUAGE_LOCALES[language] || language;
+
+    const link = document.createElement('a');
+    link.href = languagePath;
+    link.className = 'language-offer-accept';
+    link.textContent = copy.accept;
+    link.addEventListener('click', () => {
+      try {
+        localStorage.setItem(LANGUAGE_KEY, language);
+      } catch {
+        // Navigation still applies when storage is unavailable.
+      }
+      writeCookie(LANGUAGE_COOKIE_NAME, language);
+    });
+
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'language-offer-dismiss';
+    dismiss.setAttribute('aria-label', copy.dismiss);
+    dismiss.textContent = '×';
+    dismiss.addEventListener('click', () => bar.remove());
+
+    const label = document.createElement('span');
+    label.textContent = copy.label;
+
+    bar.append(label, link, dismiss);
+    document.body.append(bar);
   }
 
   languageSwitches.forEach((button) => {

@@ -197,19 +197,13 @@ function injectReviews(html, reviewSummary, language) {
     return Array.isArray(type) ? type.includes('BarOrPub') : type === 'BarOrPub';
   });
   if (!businessNode) throw new Error('Could not find the business node in the JSON-LD graph.');
-  businessNode.aggregateRating = {
-    '@type': 'AggregateRating',
-    ratingValue: reviewSummary.ratingValue,
-    bestRating: '5',
-    reviewCount: String(reviewSummary.reviewCount),
-  };
-  businessNode.review = reviewSummary.testimonials.map((testimonial) => ({
-    '@type': 'Review',
-    author: { '@type': 'Person', name: testimonial.author },
-    reviewRating: { '@type': 'Rating', ratingValue: String(Number(testimonial.rating) || 5), bestRating: '5' },
-    reviewBody: testimonial.quote,
-    inLanguage: 'en',
-  }));
+  // No aggregateRating / review markup on the business node. Google does not
+  // allow a business to mark up reviews about itself on its own site
+  // ("self-serving reviews"), so this was ineligible for rich results and a
+  // manual-action risk. The real star rating already shows in the map pack from
+  // Google's own data. The testimonials stay as visible HTML above.
+  delete businessNode.aggregateRating;
+  delete businessNode.review;
   const serialized = JSON.stringify(data, null, 2)
     .split('\n')
     .map((line) => `      ${line}`)
