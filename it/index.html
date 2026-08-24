@@ -516,7 +516,6 @@
           <a href="https://www.tripadvisor.com/Restaurant_Review-g19102012-d34595569-Reviews-Bar_Martiri-Spille_Tirana_County.html" target="_blank" rel="noreferrer">Tripadvisor</a>
           <a href="/it/privacy">Privacy e cookie</a>
           <button type="button" data-cookie-settings>Gestisci i cookie</button>
-          <a href='/admin'>Admin</a>
         </nav>
       </div>
     </footer>
@@ -603,7 +602,7 @@
           </div>
           <nav class="category-tabs" aria-label="Mini menu delle categorie" data-category-tabs></nav>
         </div>
-        <div class="menu-catalog" id="menu-product-grid" data-product-grid aria-live="polite"></div>
+        <div class="menu-catalog" id="menu-product-grid" data-product-grid></div>
         <p class="menu-status" data-menu-status role="status"></p>
       </section>
 
@@ -806,6 +805,7 @@
         <div class="basket-body">
           <div class="basket-items" data-basket-items></div>
           <p class="basket-empty" data-basket-empty>Il carrello è vuoto.</p>
+          <button class="text-link" type="button" data-basket-browse>Vedi il menu</button>
 
           <div class="basket-summary" data-basket-summary hidden>
             <div class="basket-total-row">
@@ -819,14 +819,18 @@
                 <input name="name" type="text" required maxlength="80" autocomplete="name">
               </label>
               <label>
-                Telefono (facoltativo)
-                <input name="phone" type="tel" maxlength="30" autocomplete="tel">
+                Telefono
+                <input name="phone" type="tel" required maxlength="30" autocomplete="tel">
               </label>
               <p class="basket-location-label">Dove sei?</p>
+              <p class="basket-location-help">
+                Il settore, la fila e il numero dell'ombrellone sono scritti sul palo del tuo ombrellone. Portiamo l'ordine lì, di solito entro 10 minuti. Si paga alla consegna.
+              </p>
               <div class="basket-location-row">
                 <label>
                   Settore
                   <select name="umbrellaSection" data-umbrella-section required>
+                    <option value="" selected disabled>Scegli</option>
                     <option value="A">A</option>
                     <option value="B">B</option>
                   </select>
@@ -840,6 +844,7 @@
                   <select name="umbrellaNumber" data-umbrella-number required></select>
                 </label>
               </div>
+              <p class="basket-location-confirm" data-order-confirm role="status" aria-live="polite" hidden></p>
               <label>
                 Nota aggiuntiva (facoltativa)
                 <input name="note" type="text" maxlength="120">

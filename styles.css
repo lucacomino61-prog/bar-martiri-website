@@ -2079,6 +2079,28 @@ svg {
   display: none;
 }
 
+.basket-location-help {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.basket-location-confirm {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--milk);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.basket-location-confirm[hidden] {
+  display: none;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

@@ -518,7 +518,6 @@
           <a href="https://www.tripadvisor.com/Restaurant_Review-g19102012-d34595569-Reviews-Bar_Martiri-Spille_Tirana_County.html" target="_blank" rel="noreferrer">Tripadvisor</a>
           <a href="/privacy">Privatësia dhe cookies</a>
           <button type="button" data-cookie-settings>Menaxho cookies</button>
-          <a href='/admin'>Admin</a>
         </nav>
       </div>
     </footer>
@@ -605,7 +604,7 @@
           </div>
           <nav class="category-tabs" aria-label="Mini menuja e kategorive" data-category-tabs></nav>
         </div>
-        <div class="menu-catalog" id="menu-product-grid" data-product-grid aria-live="polite"></div>
+        <div class="menu-catalog" id="menu-product-grid" data-product-grid></div>
         <p class="menu-status" data-menu-status role="status"></p>
       </section>
 
@@ -809,6 +808,7 @@
         <div class="basket-body">
           <div class="basket-items" data-basket-items></div>
           <p class="basket-empty" data-basket-empty>Shporta është bosh.</p>
+          <button class="text-link" type="button" data-basket-browse>Shiko menunë</button>
 
           <div class="basket-summary" data-basket-summary hidden>
             <div class="basket-total-row">
@@ -822,14 +822,19 @@
                 <input name="name" type="text" required maxlength="80" autocomplete="name">
               </label>
               <label>
-                Telefoni (opsionale)
-                <input name="phone" type="tel" maxlength="30" autocomplete="tel">
+                Telefoni
+                <input name="phone" type="tel" required maxlength="30" autocomplete="tel">
               </label>
               <p class="basket-location-label">Ku je?</p>
+              <p class="basket-location-help">
+                Numri i sektorit, i rreshtit dhe i çadrës janë të shkruar në shtyllën e çadrës tënde.
+                Porosinë ta sjellim aty, zakonisht brenda 10 minutash. Paguhet në dorëzim.
+              </p>
               <div class="basket-location-row">
                 <label>
                   Sektori
                   <select name="umbrellaSection" data-umbrella-section required>
+                    <option value="" selected disabled>Zgjidh</option>
                     <option value="A">A</option>
                     <option value="B">B</option>
                   </select>
@@ -843,6 +848,7 @@
                   <select name="umbrellaNumber" data-umbrella-number required></select>
                 </label>
               </div>
+              <p class="basket-location-confirm" data-order-confirm role="status" aria-live="polite" hidden></p>
               <label>
                 Shënim shtesë (opsionale)
                 <input name="note" type="text" maxlength="120">

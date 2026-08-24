@@ -534,11 +534,11 @@ function buildMenuSchema(products, menuData, language) {
 }
 
 function injectProductGrid(html, gridHtml) {
-  const pattern = /<div class="menu-catalog" id="menu-product-grid" data-product-grid aria-live="polite">[\s\S]*?<\/div>\s*<p class="menu-status"/;
+  const pattern = /<div class="menu-catalog" id="menu-product-grid" data-product-grid[^>]*>[\s\S]*?<\/div>\s*<p class="menu-status"/;
   if (!pattern.test(html)) {
     throw new Error('Could not find the menu-product-grid container to inject into.');
   }
-  const replacement = `<div class="menu-catalog" id="menu-product-grid" data-product-grid aria-live="polite">${gridHtml}</div>\n        <p class="menu-status"`;
+  const replacement = `<div class="menu-catalog" id="menu-product-grid" data-product-grid>${gridHtml}</div>\n        <p class="menu-status"`;
   return html.replace(pattern, replacement);
 }
 

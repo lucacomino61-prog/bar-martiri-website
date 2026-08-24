@@ -275,6 +275,13 @@
     'Totali': { sq: 'Totali', it: 'Totale', en: 'Total' },
     'Emri': { sq: 'Emri', it: 'Nome', en: 'Name' },
     'Telefoni (opsionale)': { sq: 'Telefoni (opsionale)', it: 'Telefono (facoltativo)', en: 'Phone (optional)' },
+    'Telefoni': { sq: 'Telefoni', it: 'Telefono', en: 'Phone' },
+    'Zgjidh': { sq: 'Zgjidh', it: 'Scegli', en: 'Choose' },
+    'Numri i sektorit, i rreshtit dhe i çadrës janë të shkruar në shtyllën e çadrës tënde. Porosinë ta sjellim aty, zakonisht brenda 10 minutash. Paguhet në dorëzim.': {
+      sq: 'Numri i sektorit, i rreshtit dhe i çadrës janë të shkruar në shtyllën e çadrës tënde. Porosinë ta sjellim aty, zakonisht brenda 10 minutash. Paguhet në dorëzim.',
+      it: "Il settore, la fila e il numero dell'ombrellone sono scritti sul palo del tuo ombrellone. Portiamo l'ordine lì, di solito entro 10 minuti. Si paga alla consegna.",
+      en: 'Your section, row and umbrella number are printed on your umbrella pole. We bring the order there, usually within 10 minutes. You pay on delivery.',
+    },
     'Shenim shtese (opsionale)': { sq: 'Shënim shtesë (opsionale)', it: 'Nota aggiuntiva (facoltativa)', en: 'Additional note (optional)' },
     'Ku je?': { sq: 'Ku je?', it: 'Dove sei?', en: 'Where are you?' },
     'Sektori': { sq: 'Sektori', it: 'Settore', en: 'Section' },
@@ -314,6 +321,12 @@
     noResults: { sq: 'Nuk u gjet asnjë produkt. Provo një emër tjetër.', it: 'Nessun prodotto trovato. Prova un altro nome.', en: 'No products found. Try another name.' },
     unnamedProduct: { sq: 'Pa emër', it: 'Senza nome', en: 'Unnamed' },
     sunbedPerDay: { sq: 'në ditë', it: 'al giorno', en: 'per day' },
+    chooseOption: { sq: 'Zgjidh', it: 'Scegli', en: 'Choose' },
+    orderConfirm: {
+      sq: 'E sjellim te sektori {section}, rreshti {row}, çadra {number}.',
+      it: 'Lo portiamo al settore {section}, fila {row}, ombrellone {number}.',
+      en: 'We will bring it to section {section}, row {row}, umbrella {number}.',
+    },
     reviewVerifiedPrefix: { sq: 'Vlerësimi, i verifikuar për herë të fundit më', it: 'La valutazione, verificata l’ultima volta il', en: 'The rating, last verified on' },
     reviewBasedOnSuffix: { sq: 'bazohet në', it: 'si basa su', en: 'is based on' },
     reviewCountSuffix: { sq: 'vlerësime në Google.', it: 'recensioni su Google.', en: 'Google reviews.' },
@@ -1119,9 +1132,12 @@
     const umbrellaNumber = Number(formData.get('umbrellaNumber'));
     if (
       !customerName ||
+      !customerPhone ||
       !umbrellaSection ||
       !Number.isFinite(umbrellaRow) ||
+      umbrellaRow < 1 ||
       !Number.isFinite(umbrellaNumber) ||
+      umbrellaNumber < 1 ||
       !supabaseConfig.url ||
       !supabaseConfig.publishableKey
     ) {
@@ -1186,35 +1202,77 @@
     }
   }
 
+  function placeholderOption() {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = dynamicText('chooseOption');
+    option.disabled = true;
+    return option;
+  }
+
+  function updateOrderConfirm() {
+    const slot = document.querySelector('[data-order-confirm]');
+    if (!slot) return;
+    const section = document.querySelector('[data-umbrella-section]')?.value;
+    const row = umbrellaRowSelect?.value;
+    const number = umbrellaNumberSelect?.value;
+    if (!section || !row || !number) {
+      slot.hidden = true;
+      slot.textContent = '';
+      return;
+    }
+    slot.textContent = dynamicText('orderConfirm')
+      .replace('{section}', section)
+      .replace('{row}', row)
+      .replace('{number}', number);
+    slot.hidden = false;
+  }
+
   function populateUmbrellaNumbers() {
     if (!umbrellaRowSelect || !umbrellaNumberSelect) return;
-    const row = Number(umbrellaRowSelect.value) || 1;
-    const count = umbrellasInRow(row);
+    const row = Number(umbrellaRowSelect.value) || 0;
     const previous = Number(umbrellaNumberSelect.value) || 0;
     umbrellaNumberSelect.replaceChildren();
+    umbrellaNumberSelect.append(placeholderOption());
+    if (!row) {
+      umbrellaNumberSelect.value = '';
+      updateOrderConfirm();
+      return;
+    }
+    const count = umbrellasInRow(row);
     for (let number = 1; number <= count; number += 1) {
       const option = document.createElement('option');
       option.value = String(number);
       option.textContent = String(number);
       umbrellaNumberSelect.append(option);
     }
-    umbrellaNumberSelect.value = String(previous >= 1 && previous <= count ? previous : 1);
+    umbrellaNumberSelect.value = previous >= 1 && previous <= count ? String(previous) : '';
+    updateOrderConfirm();
   }
 
   function populateUmbrellaSelectors() {
     if (!umbrellaRowSelect) return;
     if (!umbrellaRowSelect.children.length) {
+      umbrellaRowSelect.append(placeholderOption());
       for (let row = 1; row <= UMBRELLA_ROWS; row += 1) {
         const option = document.createElement('option');
         option.value = String(row);
         option.textContent = String(row);
         umbrellaRowSelect.append(option);
       }
+      umbrellaRowSelect.value = '';
     }
     populateUmbrellaNumbers();
   }
 
   umbrellaRowSelect?.addEventListener('change', populateUmbrellaNumbers);
+  umbrellaNumberSelect?.addEventListener('change', updateOrderConfirm);
+  document.querySelector('[data-umbrella-section]')?.addEventListener('change', updateOrderConfirm);
+
+  // An empty basket used to say "your basket is empty" and offer no way out.
+  document.querySelector('[data-basket-browse]')?.addEventListener('click', (event) => {
+    openPanel('menu', event.currentTarget);
+  });
   populateUmbrellaSelectors();
 
   checkoutForm?.addEventListener('submit', submitOrder);
