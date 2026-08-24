@@ -217,6 +217,7 @@
           <button class="hero-menu-link" type="button" data-hero-menu>
             Vedi il menu <span aria-hidden="true">↗</span>
           </button>
+          <figure class="hero-figure" data-hero-photo hidden></figure>
         </div>
       </section>
 
@@ -358,7 +359,7 @@
             <path d="M12 10V2M4.93 4.93l1.42 1.42M2 12h2M20 12h2M17.66 6.34l1.41-1.41M22 18H2M16 18a4 4 0 0 0-8 0M5 22h14"></path>
           </symbol>
         </svg>
-        <h2 class="sr-only" id="spille-today-title">Spille Sot</h2>
+        <h2 class="sr-only" id="spille-today-title">Spille oggi</h2>
         <p class="sr-only" data-weather-summary aria-live="polite">Stiamo caricando le condizioni attuali.</p>
         <div class="weather-ticker" aria-hidden="true">
           <div class="weather-ticker-track">
@@ -654,7 +655,7 @@
                 <button class="secondary-button" type="button" data-load-map>Carica Google Maps</button>
               </div>
               <iframe
-                title="Harta e Bar Martiri në Spille"
+                title="Mappa di Bar Martiri a Spille"
                 data-src="https://www.google.com/maps?q=Bar%20Martiri%2C%20Rruga%20e%20Pishave%2C%20Spille%2C%20Shqip%C3%ABri&amp;output=embed"
                 loading="lazy"
                 referrerpolicy="no-referrer-when-downgrade"
@@ -714,7 +715,7 @@
             <a href="https://www.facebook.com/MartiriBeach/" target="_blank" rel="noreferrer">
               Facebook <strong>Bar Martiri ↗</strong>
             </a>
-            <button type="button" data-cookie-settings>Preferencat e cookies</button>
+            <button type="button" data-cookie-settings>Preferenze cookie</button>
           </div>
         </div>
       </section>
@@ -729,11 +730,11 @@
       >
         <header class="panel-header">
           <div class="panel-title">
-            <p class="eyebrow">Shkruaji Bar Martiri</p>
+            <p class="eyebrow">Scrivi a Bar Martiri</p>
             <h2 id="chat-panel-title">Chat</h2>
           </div>
           <div class="panel-tools">
-            <button class="icon-button" type="button" data-panel-close aria-label="Mbyll chat-in">
+            <button class="icon-button" type="button" data-panel-close aria-label="Chiudi la chat">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="M18 6 6 18M6 6l12 12"></path>
               </svg>
@@ -742,11 +743,11 @@
         </header>
         <div class="chat-page">
           <div class="chat-messages" data-chat-messages></div>
-          <p class="chat-empty" data-chat-empty>Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.</p>
+          <p class="chat-empty" data-chat-empty>Scrivici un messaggio e ti risponderemo il prima possibile.</p>
           <input class="chat-name-input" data-chat-name-input type="text" maxlength="80" placeholder="Il tuo nome (opzionale)" autocomplete="name">
           <form class="chat-composer" data-chat-form>
-            <input type="text" name="message" maxlength="1000" placeholder="Shkruaj një mesazh..." autocomplete="off" required>
-            <button class="chat-composer-send" type="submit" aria-label="Dërgo">
+            <input type="text" name="message" maxlength="1000" placeholder="Scrivi un messaggio..." autocomplete="off" required>
+            <button class="chat-composer-send" type="submit" aria-label="Invia">
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M13 5l7 7-7 7"></path></svg>
             </button>
           </form>
@@ -930,7 +931,7 @@
         type="button"
         data-dock-action="chat"
         data-dock-label="Chat"
-        aria-label="Hap chat-in me ne"
+        aria-label="Apri la chat con noi"
         aria-pressed="false"
       >
         <svg aria-hidden="true" viewBox="0 0 24 24">

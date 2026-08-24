@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -243,6 +243,125 @@ function injectSunbedOffer(html, settings) {
   return html.replace(businessMatch[0], `<script type="application/ld+json">\n${serialized}\n    </script>`);
 }
 
+const HERO_ALT = {
+  sq: 'Bar Martiri në Spille, Shqipëri',
+  it: 'Bar Martiri a Spille, Albania',
+  en: 'Bar Martiri in Spille, Albania',
+};
+
+// Minimal JPEG SOF reader: we need real pixel dimensions so the hero <img> can
+// carry width/height (no layout shift) and so the social card can pick the
+// widest photo rather than whichever happens to sort first.
+function readJpegSize(buffer) {
+  let i = 2;
+  while (i < buffer.length) {
+    if (buffer[i] !== 0xff) { i += 1; continue; }
+    const marker = buffer[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { height: buffer.readUInt16BE(i + 5), width: buffer.readUInt16BE(i + 7) };
+    }
+    i += 2 + buffer.readUInt16BE(i + 2);
+  }
+  return null;
+}
+
+async function fetchGalleryPhotos() {
+  const configSource = await readFile(resolve(projectRoot, 'supabase-config.js'), 'utf8');
+  const sandbox = { BAR_MARTIRI_SUPABASE: null };
+  new Function('window', configSource)(sandbox);
+  const config = sandbox.BAR_MARTIRI_SUPABASE;
+  try {
+    const query = new URLSearchParams({ select: 'image_url,sort_order', order: 'sort_order.asc' });
+    const response = await fetch(`${config.url}/rest/v1/gallery_images?${query.toString()}`, {
+      headers: { apikey: config.publishableKey, Authorization: `Bearer ${config.publishableKey}` },
+    });
+    if (!response.ok) throw new Error(`Supabase request failed with ${response.status}`);
+    const rows = (await response.json()).filter((row) => row?.image_url);
+    const photos = [];
+    for (const row of rows) {
+      try {
+        const bytes = Buffer.from(await (await fetch(row.image_url)).arrayBuffer());
+        const size = readJpegSize(bytes);
+        if (size) photos.push({ url: row.image_url, bytes, ...size });
+      } catch {
+        // Skip a photo we cannot measure rather than emitting one without dimensions.
+      }
+    }
+    return photos;
+  } catch (error) {
+    console.warn(`Gallery fetch failed: ${error.message}`);
+    return [];
+  }
+}
+
+// The hero photo is the LCP element. Served from Supabase it cost ~633ms of LCP
+// "load delay" on Slow 4G -- almost all of it third-party connection setup,
+// against 6ms of actual download. Copy it into the build and serve it
+// same-origin instead.
+async function localizeHeroPhoto(photo, targetRoot) {
+  if (!photo?.bytes) return null;
+  const base = photo.url.split('/').pop().replace(/\.[a-z]+$/i, '');
+  const dir = resolve(targetRoot, 'assets/hero');
+  await mkdir(dir, { recursive: true });
+
+  // The gallery stores unoptimized JPEGs. The rest of the site is 100% WebP and
+  // this is the LCP element, so convert rather than shipping the JPEG as-is.
+  try {
+    const { default: sharp } = await import('sharp');
+    const webp = await sharp(photo.bytes).webp({ quality: 78 }).toBuffer();
+    if (webp.length < photo.bytes.length) {
+      await writeFile(resolve(dir, `${base}.webp`), webp);
+      console.log(
+        `Hero photo: ${Math.round(photo.bytes.length / 1024)}KB JPEG -> ${Math.round(webp.length / 1024)}KB WebP.`
+      );
+      return `/assets/hero/${base}.webp`;
+    }
+  } catch (error) {
+    console.warn(`Hero WebP conversion unavailable (${error.message}); serving the original.`);
+  }
+
+  const name = photo.url.split('/').pop();
+  await writeFile(resolve(dir, name), photo.bytes);
+  return `/assets/hero/${name}`;
+}
+
+// The hero uses the first photo by sort order, so it is controlled by dragging
+// the gallery in /admin -- no hardcoded URL, no extra admin UI.
+function injectHeroPhoto(html, photos, language, localPath) {
+  const pattern = /<figure class="hero-figure" data-hero-photo[^>]*><\/figure>/;
+  if (!pattern.test(html)) throw new Error('Could not find the hero photo placeholder.');
+  const photo = photos[0];
+  if (!photo) return html;
+  const src = localPath || photo.url;
+  const alt = HERO_ALT[language] || HERO_ALT.sq;
+  const img =
+    `<img src="${src}" alt="${escapeHtml(alt)}" width="${photo.width}" height="${photo.height}" ` +
+    'fetchpriority="high" decoding="async">';
+  // Without a preload the hero photo is only discovered once the parser reaches
+  // it, which measured as 653ms of LCP "load delay" against 23ms of actual
+  // download. Announce it in <head> instead.
+  const preload =
+    `<link rel="preload" as="image" href="${src}" fetchpriority="high">
+    </head>`;
+  return html
+    .replace('</head>', preload)
+    .replace(pattern, `<figure class="hero-figure" data-hero-photo>${img}</figure>`);
+}
+
+// The social card wants landscape. Pick the widest photo instead of the first,
+// and correct og:image:width/height, which claimed 1200x630 for a card that was
+// a flat cream rectangle.
+function injectSocialImage(html, photos) {
+  if (!photos.length) return html;
+  const widest = photos.slice().sort((a, b) => b.width / b.height - a.width / a.height)[0];
+  if (widest.width / widest.height < 1) return html;
+  return html
+    .replace(/(<meta property="og:image" content=")[^"]*(">)/, `$1${widest.url}$2`)
+    .replace(/(<meta property="og:image:width" content=")[^"]*(">)/, `$1${widest.width}$2`)
+    .replace(/(<meta property="og:image:height" content=")[^"]*(">)/, `$1${widest.height}$2`)
+    .replace(/(<meta name="twitter:image" content=")[^"]*(">)/, `$1${widest.url}$2`);
+}
+
 function formatVerifiedDate(dateString, locale) {
   try {
     return new Date(`${dateString}T00:00:00`).toLocaleDateString(locale, {
@@ -459,6 +578,13 @@ try {
 
 const reviewSummary = await fetchReviewSummary();
 const siteSettings = await fetchSiteSettings();
+const galleryPhotos = await fetchGalleryPhotos();
+const heroPhotoPath = await localizeHeroPhoto(galleryPhotos[0], targetRoot);
+console.log(
+  galleryPhotos.length
+    ? `Gallery: ${galleryPhotos.length} photos, hero uses the first by sort order.`
+    : 'Gallery: no photos reachable, hero stays typographic.'
+);
 console.log(
   siteSettings.sunbedPrice
     ? `Sunbed price: ${siteSettings.sunbedPrice} ${siteSettings.sunbedCurrency}/day.`
@@ -481,6 +607,8 @@ for (const language of LOCALES) {
   html = injectReviews(html, reviewSummary, language);
   html = injectSunbedPrice(html, siteSettings, language);
   html = injectSunbedOffer(html, siteSettings);
+  html = injectHeroPhoto(html, galleryPhotos, language, heroPhotoPath);
+  html = injectSocialImage(html, galleryPhotos);
   await writeFile(filePath, html);
 }
 

@@ -284,6 +284,23 @@
     'Galeria': { sq: 'Galeria', it: 'Galleria', en: 'Gallery' },
     'Shkruaj në WhatsApp': { sq: 'Shkruaj në WhatsApp', it: 'Scrivici su WhatsApp', en: 'Message us on WhatsApp' },
     'Emri yt (opsionale)': { sq: 'Emri yt (opsionale)', it: 'Il tuo nome (opzionale)', en: 'Your name (optional)' },
+    'Hap chat-in me ne': { sq: 'Hap chat-in me ne', it: 'Apri la chat con noi', en: 'Open chat with us' },
+    'Mbyll chat-in': { sq: 'Mbyll chat-in', it: 'Chiudi la chat', en: 'Close chat' },
+    'Shkruaji Bar Martiri': { sq: 'Shkruaji Bar Martiri', it: 'Scrivi a Bar Martiri', en: 'Message Bar Martiri' },
+    'Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.': {
+      sq: 'Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.',
+      it: 'Scrivici un messaggio e ti risponderemo il prima possibile.',
+      en: 'Send us a message and we will reply as soon as we can.',
+    },
+    'Shkruaj një mesazh...': { sq: 'Shkruaj një mesazh...', it: 'Scrivi un messaggio...', en: 'Write a message...' },
+    'Dërgo': { sq: 'Dërgo', it: 'Invia', en: 'Send' },
+    'Harta e Bar Martiri në Spille': {
+      sq: 'Harta e Bar Martiri në Spille',
+      it: 'Mappa di Bar Martiri a Spille',
+      en: 'Map of Bar Martiri in Spille',
+    },
+    'Preferencat e cookies': { sq: 'Preferencat e cookies', it: 'Preferenze cookie', en: 'Cookie preferences' },
+    'Spille Sot': { sq: 'Spille Sot', it: 'Spille oggi', en: 'Spille today' },
   });
 
   const DYNAMIC_TEXT = Object.freeze({
@@ -469,9 +486,23 @@
     return productTranslationFor(product)?.description || product.description || '';
   }
 
+  // Chrome ships no `sq` locale, so Intl silently resolves 'sq-AL' to en-US and
+  // Albanian dates came out as "August 3, 2026" -- month name and order both
+  // wrong, and only in the site's own default language. Format Albanian by hand;
+  // it-IT and en-GB are real locales and Intl handles them correctly.
+  const SQ_MONTHS = [
+    'janar', 'shkurt', 'mars', 'prill', 'maj', 'qershor',
+    'korrik', 'gusht', 'shtator', 'tetor', 'nëntor', 'dhjetor',
+  ];
+
   function formatVerifiedDate(dateString) {
     try {
-      return new Date(`${dateString}T00:00:00`).toLocaleDateString(LANGUAGE_LOCALES[currentLanguage], {
+      const date = new Date(`${dateString}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return dateString;
+      if (currentLanguage === 'sq') {
+        return `${date.getDate()} ${SQ_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+      }
+      return date.toLocaleDateString(LANGUAGE_LOCALES[currentLanguage], {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -479,6 +510,13 @@
     } catch {
       return dateString;
     }
+  }
+
+  // Same reason: 'sq-AL' would fall back to en-US and print 2.7 where Albanian
+  // and Italian both write 2,7.
+  function formatDecimal(value) {
+    const text = String(value);
+    return currentLanguage === 'en' ? text : text.replace('.', ',');
   }
 
   function renderReviews() {
@@ -1204,7 +1242,9 @@
       element.textContent = dynamicText(element.dataset.i18nDynamic);
     });
     languageSwitches.forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.dataset.languageSwitch === currentLanguage));
+      const selected = button.dataset.languageSwitch === currentLanguage;
+      button.setAttribute('aria-pressed', String(selected));
+      if (button.getAttribute('role') === 'option') button.setAttribute('aria-selected', String(selected));
     });
     syncLanguageSwitchers();
 
@@ -1416,7 +1456,7 @@
   }
 
   function formatSpilleTime(date) {
-    return new Intl.DateTimeFormat('sq-AL', {
+    return new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Europe/Tirane',
       hour: '2-digit',
       minute: '2-digit',
@@ -1467,20 +1507,52 @@
       .forEach((item) => (item.textContent = formatSpilleTime(sunset)));
   }
 
+  // The Albanian here was previously unaccented ("Mundesi", "I qete", "ere") and
+  // had no it/en equivalents, so /it/ and /en/ showed misspelled Albanian once
+  // the widget loaded.
+  const WEATHER_CONDITION = Object.freeze({
+    thunder: { sq: 'Stuhi në afërsi', it: 'Temporali nelle vicinanze', en: 'Storms nearby' },
+    rain: { sq: 'Mundësi reshjesh', it: 'Possibili piogge', en: 'Rain possible' },
+    fog: { sq: 'Mjegull në breg', it: 'Nebbia sulla costa', en: 'Fog on the shore' },
+    partlycloudy: { sq: 'Pjesërisht me re', it: 'Parzialmente nuvoloso', en: 'Partly cloudy' },
+    cloudy: { sq: 'Me re', it: 'Nuvoloso', en: 'Cloudy' },
+    fair: { sq: 'Kthjellime', it: 'Sereno', en: 'Fair' },
+    clear: { sq: 'Qiell i kthjellët', it: 'Cielo sereno', en: 'Clear sky' },
+  });
+
+  const SEA_STATE = Object.freeze({
+    calm: { sq: 'i qetë', it: 'calmo', en: 'calm' },
+    light: { sq: 'me lëvizje të lehtë', it: 'poco mosso', en: 'slightly choppy' },
+    windy: { sq: 'me erë', it: 'mosso', en: 'choppy' },
+  });
+
+  const WEATHER_SENTENCE = Object.freeze({
+    sq: (c, t, uv, w, sea, at) =>
+      `${c}, ${t} gradë. UV ${uv}, erë ${w} kilometra në orë, deti ${sea}. Përditësuar ${at}.`,
+    it: (c, t, uv, w, sea, at) =>
+      `${c}, ${t} gradi. UV ${uv}, vento ${w} chilometri orari, mare ${sea}. Aggiornato alle ${at}.`,
+    en: (c, t, uv, w, sea, at) =>
+      `${c}, ${t} degrees. UV ${uv}, wind ${w} kilometres per hour, sea ${sea}. Updated ${at}.`,
+  });
+
+  function localized(table, key) {
+    return table[key]?.[currentLanguage] || table[key]?.sq || '';
+  }
+
   function weatherDescription(symbolCode = '') {
-    if (symbolCode.includes('thunder')) return 'Stuhi ne afersi';
-    if (symbolCode.includes('rain') || symbolCode.includes('sleet')) return 'Mundesi reshjesh';
-    if (symbolCode.includes('fog')) return 'Mjegull ne breg';
-    if (symbolCode.includes('partlycloudy')) return 'Pjeserisht me re';
-    if (symbolCode.includes('cloudy')) return 'Me re';
-    if (symbolCode.includes('fair')) return 'Kthjellime';
-    return 'Qiell i kthjellet';
+    if (symbolCode.includes('thunder')) return localized(WEATHER_CONDITION, 'thunder');
+    if (symbolCode.includes('rain') || symbolCode.includes('sleet')) return localized(WEATHER_CONDITION, 'rain');
+    if (symbolCode.includes('fog')) return localized(WEATHER_CONDITION, 'fog');
+    if (symbolCode.includes('partlycloudy')) return localized(WEATHER_CONDITION, 'partlycloudy');
+    if (symbolCode.includes('cloudy')) return localized(WEATHER_CONDITION, 'cloudy');
+    if (symbolCode.includes('fair')) return localized(WEATHER_CONDITION, 'fair');
+    return localized(WEATHER_CONDITION, 'clear');
   }
 
   function coastalEstimate(windSpeedKmh) {
-    if (windSpeedKmh < 12) return 'I qete';
-    if (windSpeedKmh < 25) return 'Levizje e lehte';
-    return 'Me ere';
+    if (windSpeedKmh < 12) return localized(SEA_STATE, 'calm');
+    if (windSpeedKmh < 25) return localized(SEA_STATE, 'light');
+    return localized(SEA_STATE, 'windy');
   }
 
   function weatherIcon(symbolCode = '') {
@@ -1508,7 +1580,7 @@
       .forEach((item) => (item.textContent = temperature));
     document
       .querySelectorAll('[data-ticker-uv]')
-      .forEach((item) => (item.textContent = uv.toLocaleString('sq-AL')));
+      .forEach((item) => (item.textContent = formatDecimal(uv)));
     document
       .querySelectorAll('[data-ticker-wind]')
       .forEach((item) => (item.textContent = windSpeed));
@@ -1517,10 +1589,15 @@
     });
     const summary = document.querySelector('[data-weather-summary]');
     if (summary) {
-      summary.textContent =
-        `${weatherDescription(symbol)}, ${temperature} grade. ` +
-        `UV ${uv.toLocaleString('sq-AL')}, ere ${windSpeed} kilometra ne ore, ` +
-        `deti ${coastalEstimate(windSpeed)}. Perditesuar ${formatSpilleTime(new Date(savedAt))}.`;
+      const sentence = WEATHER_SENTENCE[currentLanguage] || WEATHER_SENTENCE.sq;
+      summary.textContent = sentence(
+        weatherDescription(symbol),
+        temperature,
+        formatDecimal(uv),
+        windSpeed,
+        coastalEstimate(windSpeed),
+        formatSpilleTime(new Date(savedAt))
+      );
     }
     return true;
   }
@@ -1958,6 +2035,8 @@
     target.classList.remove('is-header-compact');
     lastPanelScrollY = 0;
     document.body.classList.add('is-panel-open');
+    document.getElementById('main')?.setAttribute('inert', '');
+    document.querySelector('.site-header')?.setAttribute('inert', '');
     dock?.classList.remove('is-compact');
     dock?.classList.remove('is-out');
     setDockActive(name);
@@ -1985,7 +2064,13 @@
           { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
         );
       }
-      getFocusable(target)[0]?.focus();
+      const closeButton = target.querySelector('[data-panel-close]');
+      if (closeButton) {
+        closeButton.focus();
+      } else {
+        target.setAttribute('tabindex', '-1');
+        target.focus();
+      }
     });
   }
 
@@ -2001,6 +2086,8 @@
     panelLayer.classList.remove('is-visible');
     closingPanel?.classList.remove('is-open');
     document.body.classList.remove('is-panel-open');
+    document.getElementById('main')?.removeAttribute('inert');
+    document.querySelector('.site-header')?.removeAttribute('inert');
     if (!options.keepActive) setDockActive('home');
 
     closeTimer = window.setTimeout(() => {

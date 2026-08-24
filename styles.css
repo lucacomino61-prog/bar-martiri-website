@@ -1107,9 +1107,18 @@ svg {
   white-space: nowrap;
 }
 
-.dock-action:is(:hover, :focus-visible)::after {
+.dock-action:is(:hover, :focus-visible, :active)::after {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* Touch has no hover, so on touch devices the label rides with the active
+   state instead of being unreachable. */
+@media (hover: none) {
+  .dock-action.is-active::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .panel-layer {
@@ -2036,6 +2045,32 @@ svg {
 }
 
 .search-intro-features .service-price[hidden] {
+  display: none;
+}
+
+.hero-figure {
+  margin: clamp(32px, 5vw, 52px) 0 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--paper-strong);
+  box-shadow: 0 24px 60px var(--shadow-soft);
+}
+
+.hero-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+}
+
+@media (max-width: 720px) {
+  .hero-figure img {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+.hero-figure[hidden] {
   display: none;
 }
 
