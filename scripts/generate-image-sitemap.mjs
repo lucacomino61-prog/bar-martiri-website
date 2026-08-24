@@ -1,4 +1,4 @@
-import { readdir, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,10 +21,48 @@ const imageLocations = [
   ...optimizedFiles.map((file) => `assets/optimized/${file}`),
   ...productIds.map((id) => `assets/products/${id}.webp`),
 ];
+// Google treats <image:title> as a relevance signal for image search. Only
+// images we can name truthfully get a title: the hand-named site assets, plus
+// any product whose id appears in the local catalogue. The Supabase-backed
+// catalogue images are named by UUID, so they are left untitled rather than
+// given a meaningless one.
+const menuSource = await readFile(resolve(projectRoot, 'menu-data.js'), 'utf8');
+const menuSandbox = {};
+new Function('window', menuSource)(menuSandbox);
+const catalogue = menuSandbox.BAR_MARTIRI_MENU ?? {};
+
+const productNames = new Map();
+for (const product of catalogue.products ?? []) {
+  if (product?.id && product?.name) productNames.set(String(product.id), String(product.name));
+}
+
+const BRAND = 'Bar Martiri, Spille';
+const UUID_NAMED = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function titleFor(path) {
+  const file = path.split('/').pop().replace(/\.[a-z]+$/i, '');
+  const productName = productNames.get(file);
+  if (productName) return productName + ' \u2014 ' + BRAND;
+  if (UUID_NAMED.test(file)) return null;
+  const humanized = file
+    .replace(/[-_]+/g, ' ')
+    .replace(/(^|\s)([a-z])/g, (match, lead, letter) => lead + letter.toUpperCase())
+    .trim();
+  return humanized ? humanized + ' \u2014 ' + BRAND : null;
+}
+
+const escapeXml = (value) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
 const images = imageLocations
   .map(
     (path) =>
-      `    <image:image><image:loc>https://www.barmartiri.com/${path}</image:loc></image:image>`
+      `    <image:image><image:loc>https://www.barmartiri.com/${path}</image:loc>${titleFor(path) ? `<image:title>${escapeXml(titleFor(path))}</image:title>` : ''}</image:image>`
   )
   .join('\n');
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

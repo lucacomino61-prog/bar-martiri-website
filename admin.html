@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="Bar Martiri Admin">
     <meta name="robots" content="noindex, nofollow, noarchive">
     <title>Admin | Bar Martiri</title>
-    <link rel="stylesheet" href="admin.css?v=20260820-2">
+    <link rel="stylesheet" href="admin.css">
   </head>
   <body>
     <header class="admin-header">
@@ -97,6 +97,13 @@
               <path d="M14 3v6h6M8 13h8M8 17h5"></path>
             </svg>
             Historia
+          </button>
+          <button class="sidebar-action" type="button" data-admin-view-tab="settings">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path>
+              <circle cx="12" cy="12" r="4"></circle>
+            </svg>
+            Çmimet
           </button>
         </nav>
         <div class="sidebar-footer">
@@ -468,14 +475,42 @@
             </form>
           </section>
         </div>
+
+        <div class="admin-layout" data-admin-view-panel="settings" hidden>
+          <section class="reviews-panel" aria-labelledby="settings-panel-title">
+            <div class="section-toolbar">
+              <h3 id="settings-panel-title">Çmimi i shezlonit</h3>
+            </div>
+            <p class="field-help">
+              Shfaqet në faqe te "Shezlone pranë detit" dhe në të dhënat për Google. Ndryshimi duket menjëherë, pa u rindërtuar faqja. Lëre bosh që të mos shfaqet fare çmimi.
+            </p>
+            <form class="reviews-form" data-settings-form>
+              <label>
+                Çmimi për ditë
+                <input name="sunbedPrice" type="number" min="0" max="100000" step="10" inputmode="numeric" placeholder="Bosh = pa çmim">
+              </label>
+              <label>
+                Monedha
+                <input name="sunbedCurrency" type="text" maxlength="8" required>
+              </label>
+
+              <p class="form-error" data-settings-error role="alert"></p>
+              <p class="sort-status" data-settings-status role="status" aria-live="polite"></p>
+
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Ruaj çmimin</button>
+              </div>
+            </form>
+          </section>
+        </div>
       </section>
     </main>
 
     <script defer src="assets/vendor/supabase.min.js"></script>
-    <script defer src="supabase-config.js?v=20260809-2"></script>
-    <script defer src="menu-data.js?v=20260804-1"></script>
-    <script defer src="supabase-store.js?v=20260820-1"></script>
-    <script defer src="indexnow.js?v=20260809-1"></script>
-    <script defer src="admin.js?v=20260820-4"></script>
+    <script defer src="supabase-config.js"></script>
+    <script defer src="menu-data.js"></script>
+    <script defer src="supabase-store.js"></script>
+    <script defer src="indexnow.js"></script>
+    <script defer src="admin.js"></script>
   </body>
 </html>

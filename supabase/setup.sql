@@ -245,6 +245,39 @@ to authenticated
 using (public.is_menu_admin())
 with check (public.is_menu_admin());
 
+-- Editable site settings. Single row, same public-read / admin-write shape as
+-- site_story. The sunbed day rate lives here so it can be changed from /admin
+-- without a deploy.
+create table if not exists public.site_settings (
+  id text primary key default 'main',
+  sunbed_price integer,  -- null until a price is published from /admin
+  sunbed_currency text not null default 'ALL',
+  updated_at timestamptz not null default now()
+);
+
+insert into public.site_settings (id) values ('main') on conflict (id) do nothing;
+
+alter table public.site_settings enable row level security;
+
+drop policy if exists "Public can read site settings" on public.site_settings;
+create policy "Public can read site settings"
+on public.site_settings for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "Admins can insert site settings" on public.site_settings;
+create policy "Admins can insert site settings"
+on public.site_settings for insert
+to authenticated
+with check (public.is_menu_admin());
+
+drop policy if exists "Admins can update site settings" on public.site_settings;
+create policy "Admins can update site settings"
+on public.site_settings for update
+to authenticated
+using (public.is_menu_admin())
+with check (public.is_menu_admin());
+
 -- Orders placed from the public site's basket, confirmed from /admin, with a
 -- Telegram notification fired automatically on every new order.
 create extension if not exists pgcrypto;

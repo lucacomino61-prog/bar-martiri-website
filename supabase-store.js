@@ -443,6 +443,64 @@
     return normalized;
   }
 
+  const SETTINGS_KEY = 'barMartiri.admin.settings.v1';
+  // sunbedPrice is null until one is published from /admin. Null is the normal
+  // resting state, not an error: the site simply shows no price.
+  const DEFAULT_SETTINGS = Object.freeze({ sunbedPrice: null, sunbedCurrency: 'ALL' });
+
+  function normalizeSettings(row) {
+    const raw = row?.sunbed_price ?? row?.sunbedPrice;
+    const price = raw === null || raw === undefined || raw === '' ? null : Number.parseInt(raw, 10);
+    const currency = String(row?.sunbed_currency ?? row?.sunbedCurrency ?? '').trim();
+    return {
+      sunbedPrice: Number.isFinite(price) && price > 0 ? price : null,
+      sunbedCurrency: currency || DEFAULT_SETTINGS.sunbedCurrency,
+    };
+  }
+
+  function loadLocalSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      return raw ? normalizeSettings(JSON.parse(raw)) : { ...DEFAULT_SETTINGS };
+    } catch {
+      return { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  async function getSettings() {
+    if (!client) return loadLocalSettings();
+    try {
+      const { data, error } = await client
+        .from('site_settings')
+        .select('sunbed_price,sunbed_currency')
+        .eq('id', 'main')
+        .single();
+      if (error) throw error;
+      return normalizeSettings(data);
+    } catch {
+      return loadLocalSettings();
+    }
+  }
+
+  async function saveSettings(settings) {
+    const normalized = normalizeSettings(settings);
+    if (!client) {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalized));
+      return normalized;
+    }
+    const { error } = await client.from('site_settings').upsert(
+      {
+        id: 'main',
+        sunbed_price: normalized.sunbedPrice,
+        sunbed_currency: normalized.sunbedCurrency,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    );
+    if (error) throw error;
+    return normalized;
+  }
+
   function normalizeOrder(row) {
     return {
       id: String(row.id),
@@ -663,6 +721,8 @@
     deleteGalleryImage,
     getStory,
     saveStory,
+    getSettings,
+    saveSettings,
     listChatConversations,
     listChatMessages,
     sendAdminChatMessage,

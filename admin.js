@@ -73,6 +73,9 @@
   const storyForm = document.querySelector('[data-story-form]');
   const storyError = document.querySelector('[data-story-error]');
   const storyStatus = document.querySelector('[data-story-status]');
+  const settingsForm = document.querySelector('[data-settings-form]');
+  const settingsError = document.querySelector('[data-settings-error]');
+  const settingsStatus = document.querySelector('[data-settings-status]');
   const chatConversationsList = document.querySelector('[data-chat-conversations-list]');
   const chatConversationsEmpty = document.querySelector('[data-chat-conversations-empty]');
   const refreshChatsButton = document.querySelector('[data-refresh-chats]');
@@ -109,6 +112,7 @@
     analytics: { eyebrow: 'Statistikat', title: 'Analitika' },
     gallery: { eyebrow: 'Faqja', title: 'Galeria' },
     story: { eyebrow: 'Faqja', title: 'Historia' },
+    settings: { eyebrow: 'Faqja', title: 'Çmimet' },
   };
 
   document.querySelectorAll('[data-admin-view-tab]').forEach((tab) => {
@@ -142,6 +146,7 @@
       if (view === 'analytics') void loadAnalyticsPanel();
       if (view === 'gallery') void loadGalleryPanel();
       if (view === 'story') void loadStoryPanel();
+      if (view === 'settings') void loadSettingsPanel();
     });
   });
 
@@ -283,6 +288,50 @@
     }
   }
 
+  async function loadSettingsPanel() {
+    if (!store?.getSettings || !settingsForm) return;
+    try {
+      const settings = await store.getSettings();
+      settingsForm.elements.sunbedPrice.value = settings.sunbedPrice ?? '';
+      settingsForm.elements.sunbedCurrency.value = settings.sunbedCurrency;
+    } catch {
+      setError(settingsError, 'Çmimi nuk mund të ngarkohet.');
+    }
+  }
+
+  settingsForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setError(settingsError, '');
+    if (settingsStatus) settingsStatus.textContent = '';
+
+    const rawPrice = settingsForm.elements.sunbedPrice.value.trim();
+    const sunbedPrice = rawPrice === '' ? null : Number.parseInt(rawPrice, 10);
+    const sunbedCurrency = settingsForm.elements.sunbedCurrency.value.trim();
+
+    // Empty is a valid choice: it hides the price line on the site.
+    if (rawPrice !== '' && (!Number.isFinite(sunbedPrice) || sunbedPrice <= 0)) {
+      setError(settingsError, 'Shkruaj një çmim të vlefshëm ose lëre bosh.');
+      return;
+    }
+    if (!sunbedCurrency) {
+      setError(settingsError, 'Shkruaj monedhën.');
+      return;
+    }
+
+    const submitButton = settingsForm.querySelector('button[type="submit"]');
+    try {
+      if (submitButton) submitButton.disabled = true;
+      await store.saveSettings({ sunbedPrice, sunbedCurrency });
+      if (settingsStatus)
+        settingsStatus.textContent = sunbedPrice ? 'Çmimi u ruajt.' : 'Çmimi u hoq nga faqja.';
+      window.BAR_MARTIRI_INDEXNOW?.submit();
+    } catch (error) {
+      setError(settingsError, error.message || 'Çmimi nuk mund të ruhet.');
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
+  });
+
   storyForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     setError(storyError, '');
@@ -300,15 +349,24 @@
       let bodyIt = lastLoadedStory?.bodyIt || '';
       let titleEn = lastLoadedStory?.titleEn || '';
       let bodyEn = lastLoadedStory?.bodyEn || '';
+      let translationFailed = false;
       try {
         const translated = await translateToItEn([titleSq, bodySq]);
         [titleIt, bodyIt] = translated.it;
         [titleEn, bodyEn] = translated.en;
       } catch {
-        // Translation isn't set up yet — save the Albanian text anyway.
+        // Save the Albanian text anyway rather than blocking the admin, but do
+        // not stay quiet about it: swallowing this silently is why the story sat
+        // untranslated -- the save said "u ruajt" while it/en stayed empty and
+        // the About section never appeared on /it/ or /en/.
+        translationFailed = true;
       }
       lastLoadedStory = await store.saveStory({ titleSq, bodySq, titleIt, bodyIt, titleEn, bodyEn });
-      if (storyStatus) storyStatus.textContent = 'Historia u ruajt.';
+      if (storyStatus) {
+        storyStatus.textContent = translationFailed
+          ? 'Historia u ruajt vetëm në shqip — përkthimi nuk u krye, ndaj nuk shfaqet te /it/ dhe /en/.'
+          : 'Historia u ruajt.';
+      }
       window.BAR_MARTIRI_INDEXNOW?.submit();
     } catch (error) {
       setError(storyError, error.message || 'Historia nuk mund të ruhet.');
@@ -1100,6 +1158,7 @@
       if (pendingImage && store.isRemote()) {
         product.image = await store.uploadImage(pendingImage.blob, pendingImage.name);
       }
+      let productTranslationFailed = false;
       try {
         const translated = await translateToItEn([product.name, product.description]);
         product.translations = {
@@ -1107,9 +1166,10 @@
           en: { name: translated.en[0], description: translated.en[1] },
         };
       } catch {
-        // Translation isn't set up yet (or DeepL is briefly unavailable) —
-        // save the Albanian text anyway rather than blocking the admin.
-        // Re-saving later will fill in it/en once translation is configured.
+        // Save the Albanian text anyway rather than blocking the admin, but
+        // surface it: a silent failure here leaves the product untranslated on
+        // /it/ and /en/ with nothing to indicate it.
+        productTranslationFailed = true;
       }
       const savedProduct = await store.saveProduct(product);
       const existingIndex = products.findIndex((item) => item.id === savedProduct.id);
@@ -1118,6 +1178,13 @@
       products.sort((left, right) => Number(left.sortOrder) - Number(right.sortOrder));
       renderProducts();
       resetEditor();
+      // resetEditor clears the message slot, so report after it. There is no
+      // separate status element on this form, and a translation that silently
+      // did nothing is worth the admin seeing.
+      if (productTranslationFailed) {
+        productError.textContent =
+          'Produkti u ruajt vetëm në shqip — përkthimi nuk u krye, ndaj emri dhe përshkrimi nuk shfaqen te /it/ dhe /en/.';
+      }
       window.BAR_MARTIRI_INDEXNOW?.submit();
     } catch (error) {
       productError.textContent =

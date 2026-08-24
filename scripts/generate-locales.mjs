@@ -6,7 +6,7 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = await readFile(resolve(projectRoot, 'index.html'), 'utf8');
 const publicScript = await readFile(resolve(projectRoot, 'script.js'), 'utf8');
 const uiTextMatch = publicScript.match(
-  /const UI_TEXT = Object\.freeze\((\{[\s\S]*?\})\);\n\n  const DYNAMIC_TEXT/
+  /const UI_TEXT = Object\.freeze\((\{[\s\S]*?\})\);\r?\n\r?\n\s*const DYNAMIC_TEXT/
 );
 if (!uiTextMatch) throw new Error('Could not extract the public UI translations.');
 const uiText = Function(`"use strict"; return (${uiTextMatch[1]});`)();
@@ -43,6 +43,7 @@ const locales = {
       'Bar vicino al mare a Spille con lettini, parcheggio gratuito, gelato, caffè e bibite fresche.',
     servesCuisine: ['Gelato', 'Caffè', 'Bibite'],
     amenityAccess: 'Accesso facile da Rruga e Pishave',
+    imageAlt: 'Bar Martiri a Spille, Albania',
   },
   en: {
     htmlLanguage: 'en-GB',
@@ -57,8 +58,11 @@ const locales = {
       'Beachside bar in Spille with sunbeds, free parking, ice cream, coffee and cold drinks.',
     servesCuisine: ['Ice Cream', 'Coffee', 'Drinks'],
     amenityAccess: 'Easy access from Rruga e Pishave',
+    imageAlt: 'Bar Martiri in Spille, Albania',
   },
 };
+
+const ALL_OG_LOCALES = ['sq_AL', ...Object.values(locales).map((l) => l.ogLocale)];
 
 for (const [language, locale] of Object.entries(locales)) {
   const canonical = `https://www.barmartiri.com${locale.path}`;
@@ -75,7 +79,19 @@ for (const [language, locale] of Object.entries(locales)) {
       '<link rel="canonical" href="https://www.barmartiri.com/">',
       `<link rel="canonical" href="${canonical}">`
     )
-    .replace('content="sq_AL"', `content="${locale.ogLocale}"`)
+    .replace(
+      /<meta property="og:locale" content="sq_AL">[\s\S]*?<meta property="og:locale:alternate" content="en_GB">/,
+      [
+        `<meta property="og:locale" content="${locale.ogLocale}">`,
+        ...ALL_OG_LOCALES
+          .filter((tag) => tag !== locale.ogLocale)
+          .map((tag) => `    <meta property="og:locale:alternate" content="${tag}">`),
+      ].join('\n')
+    )
+    .replace(
+      'content="Bar Martiri në Spille, Shqipëri"',
+      `content="${locale.imageAlt}"`
+    )
     .replaceAll('content="Bar Martiri Spille | Akullore dhe Shezlone Pranë Detit"', `content="${locale.title}"`)
     .replaceAll(
       'content="Shezlone, parkim falas, akullore, kafe dhe pije pranë detit në Spille, Shqipëri."',

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,6 +7,20 @@ const dirFlagIndex = process.argv.indexOf('--dir');
 const targetRoot = dirFlagIndex !== -1
   ? resolve(projectRoot, process.argv[dirFlagIndex + 1])
   : projectRoot;
+
+// This script injects built output (the product grid, review copy, the sunbed
+// price) into the page HTML. Pointed at the project root it rewrites the
+// COMMITTED source files, turning a 43KB source page into a 97KB build
+// artifact -- easy to do by accident and easy to commit without noticing.
+// `npm run build:vercel` always passes --dir dist. Require the flag, or an
+// explicit opt-in for the rare case where rewriting source is intended.
+if (targetRoot === projectRoot && !process.argv.includes('--allow-source-write')) {
+  console.error('render-menu writes build output into the pages it is given.');
+  console.error('Refusing to rewrite the committed source in place.');
+  console.error('  Build output:  node scripts/render-menu.mjs --dir dist');
+  console.error('  Really source: node scripts/render-menu.mjs --allow-source-write');
+  process.exit(1);
+}
 
 const LOCALES = ['sq', 'it', 'en'];
 const LOCALE_TAG = { sq: 'sq-AL', it: 'it-IT', en: 'en-GB' };
@@ -150,6 +164,204 @@ async function fetchReviewSummary() {
   }
 }
 
+const DEFAULT_SETTINGS = { sunbedPrice: null, sunbedCurrency: 'ALL' };
+const SUNBED_PER_DAY = { sq: 'në ditë', it: 'al giorno', en: 'per day' };
+
+async function fetchSiteSettings() {
+  const configSource = await readFile(resolve(projectRoot, 'supabase-config.js'), 'utf8');
+  const sandbox = { BAR_MARTIRI_SUPABASE: null };
+  new Function('window', configSource)(sandbox);
+  const config = sandbox.BAR_MARTIRI_SUPABASE;
+  try {
+    const query = new URLSearchParams({ id: 'eq.main', select: 'sunbed_price,sunbed_currency' });
+    const response = await fetch(`${config.url}/rest/v1/site_settings?${query.toString()}`, {
+      headers: { apikey: config.publishableKey, Authorization: `Bearer ${config.publishableKey}` },
+    });
+    if (!response.ok) throw new Error(`Supabase request failed with ${response.status}`);
+    const row = (await response.json())?.[0];
+    if (!row) throw new Error('No site settings row found');
+    const raw = row.sunbed_price;
+    const price = raw === null || raw === undefined || raw === '' ? null : Number.parseInt(raw, 10);
+    return {
+      sunbedPrice: Number.isFinite(price) && price > 0 ? price : null,
+      sunbedCurrency: String(row.sunbed_currency || '').trim() || DEFAULT_SETTINGS.sunbedCurrency,
+    };
+  } catch (error) {
+    console.warn(`Site settings fetch failed: ${error.message}`);
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+// Put the price in the served HTML so crawlers and no-JS visitors see it. The
+// runtime fetch in script.js corrects it between deploys when it is edited
+// from /admin.
+function injectSunbedPrice(html, settings, language) {
+  const pattern = /<p class="service-price" data-sunbed-price[^>]*><\/p>/;
+  if (!pattern.test(html)) throw new Error('Could not find the sunbed price placeholder.');
+  if (!settings.sunbedPrice) {
+    return html.replace(pattern, '<p class="service-price" data-sunbed-price hidden></p>');
+  }
+  const perDay = SUNBED_PER_DAY[language] || SUNBED_PER_DAY.sq;
+  const text = `${settings.sunbedPrice} ${settings.sunbedCurrency} ${perDay}`;
+  return html.replace(pattern, `<p class="service-price" data-sunbed-price>${escapeHtml(text)}</p>`);
+}
+
+// An explicit, honest Offer for the headline product. Unlike the review markup
+// that used to live here, this is first-party factual data about our own
+// service, which is exactly what Offer is for.
+function injectSunbedOffer(html, settings) {
+  const businessMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  if (!businessMatch) throw new Error('Could not find the JSON-LD script block for the sunbed offer.');
+  const data = JSON.parse(businessMatch[1]);
+  const businessNode = data['@graph']?.find((node) => {
+    const type = node['@type'];
+    return Array.isArray(type) ? type.includes('BarOrPub') : type === 'BarOrPub';
+  });
+  if (!businessNode) throw new Error('Could not find the business node in the JSON-LD graph.');
+  if (!settings.sunbedPrice) {
+    delete businessNode.makesOffer;
+    const cleaned = JSON.stringify(data, null, 2)
+      .split('\n')
+      .map((line) => `      ${line}`)
+      .join('\n');
+    return html.replace(businessMatch[0], `<script type="application/ld+json">\n${cleaned}\n    </script>`);
+  }
+  businessNode.makesOffer = [
+    {
+      '@type': 'Offer',
+      itemOffered: { '@type': 'Service', name: 'Sunbed', serviceType: 'Beach sunbed rental' },
+      price: String(settings.sunbedPrice),
+      priceCurrency: settings.sunbedCurrency,
+      unitText: 'day',
+      availableAtOrFrom: { '@id': 'https://www.barmartiri.com/#business' },
+    },
+  ];
+  const serialized = JSON.stringify(data, null, 2)
+    .split('\n')
+    .map((line) => `      ${line}`)
+    .join('\n');
+  return html.replace(businessMatch[0], `<script type="application/ld+json">\n${serialized}\n    </script>`);
+}
+
+const HERO_ALT = {
+  sq: 'Bar Martiri në Spille, Shqipëri',
+  it: 'Bar Martiri a Spille, Albania',
+  en: 'Bar Martiri in Spille, Albania',
+};
+
+// Minimal JPEG SOF reader: we need real pixel dimensions so the hero <img> can
+// carry width/height (no layout shift) and so the social card can pick the
+// widest photo rather than whichever happens to sort first.
+function readJpegSize(buffer) {
+  let i = 2;
+  while (i < buffer.length) {
+    if (buffer[i] !== 0xff) { i += 1; continue; }
+    const marker = buffer[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { height: buffer.readUInt16BE(i + 5), width: buffer.readUInt16BE(i + 7) };
+    }
+    i += 2 + buffer.readUInt16BE(i + 2);
+  }
+  return null;
+}
+
+async function fetchGalleryPhotos() {
+  const configSource = await readFile(resolve(projectRoot, 'supabase-config.js'), 'utf8');
+  const sandbox = { BAR_MARTIRI_SUPABASE: null };
+  new Function('window', configSource)(sandbox);
+  const config = sandbox.BAR_MARTIRI_SUPABASE;
+  try {
+    const query = new URLSearchParams({ select: 'image_url,sort_order', order: 'sort_order.asc' });
+    const response = await fetch(`${config.url}/rest/v1/gallery_images?${query.toString()}`, {
+      headers: { apikey: config.publishableKey, Authorization: `Bearer ${config.publishableKey}` },
+    });
+    if (!response.ok) throw new Error(`Supabase request failed with ${response.status}`);
+    const rows = (await response.json()).filter((row) => row?.image_url);
+    const photos = [];
+    for (const row of rows) {
+      try {
+        const bytes = Buffer.from(await (await fetch(row.image_url)).arrayBuffer());
+        const size = readJpegSize(bytes);
+        if (size) photos.push({ url: row.image_url, bytes, ...size });
+      } catch {
+        // Skip a photo we cannot measure rather than emitting one without dimensions.
+      }
+    }
+    return photos;
+  } catch (error) {
+    console.warn(`Gallery fetch failed: ${error.message}`);
+    return [];
+  }
+}
+
+// The hero photo is the LCP element. Served from Supabase it cost ~633ms of LCP
+// "load delay" on Slow 4G -- almost all of it third-party connection setup,
+// against 6ms of actual download. Copy it into the build and serve it
+// same-origin instead.
+async function localizeHeroPhoto(photo, targetRoot) {
+  if (!photo?.bytes) return null;
+  const base = photo.url.split('/').pop().replace(/\.[a-z]+$/i, '');
+  const dir = resolve(targetRoot, 'assets/hero');
+  await mkdir(dir, { recursive: true });
+
+  // The gallery stores unoptimized JPEGs. The rest of the site is 100% WebP and
+  // this is the LCP element, so convert rather than shipping the JPEG as-is.
+  try {
+    const { default: sharp } = await import('sharp');
+    const webp = await sharp(photo.bytes).webp({ quality: 78 }).toBuffer();
+    if (webp.length < photo.bytes.length) {
+      await writeFile(resolve(dir, `${base}.webp`), webp);
+      console.log(
+        `Hero photo: ${Math.round(photo.bytes.length / 1024)}KB JPEG -> ${Math.round(webp.length / 1024)}KB WebP.`
+      );
+      return `/assets/hero/${base}.webp`;
+    }
+  } catch (error) {
+    console.warn(`Hero WebP conversion unavailable (${error.message}); serving the original.`);
+  }
+
+  const name = photo.url.split('/').pop();
+  await writeFile(resolve(dir, name), photo.bytes);
+  return `/assets/hero/${name}`;
+}
+
+// The hero uses the first photo by sort order, so it is controlled by dragging
+// the gallery in /admin -- no hardcoded URL, no extra admin UI.
+function injectHeroPhoto(html, photos, language, localPath) {
+  const pattern = /<figure class="hero-figure" data-hero-photo[^>]*><\/figure>/;
+  if (!pattern.test(html)) throw new Error('Could not find the hero photo placeholder.');
+  const photo = photos[0];
+  if (!photo) return html;
+  const src = localPath || photo.url;
+  const alt = HERO_ALT[language] || HERO_ALT.sq;
+  const img =
+    `<img src="${src}" alt="${escapeHtml(alt)}" width="${photo.width}" height="${photo.height}" ` +
+    'fetchpriority="high" decoding="async">';
+  // Without a preload the hero photo is only discovered once the parser reaches
+  // it, which measured as 653ms of LCP "load delay" against 23ms of actual
+  // download. Announce it in <head> instead.
+  const preload =
+    `<link rel="preload" as="image" href="${src}" fetchpriority="high">
+    </head>`;
+  return html
+    .replace('</head>', preload)
+    .replace(pattern, `<figure class="hero-figure" data-hero-photo>${img}</figure>`);
+}
+
+// The social card wants landscape. Pick the widest photo instead of the first,
+// and correct og:image:width/height, which claimed 1200x630 for a card that was
+// a flat cream rectangle.
+function injectSocialImage(html, photos) {
+  if (!photos.length) return html;
+  const widest = photos.slice().sort((a, b) => b.width / b.height - a.width / a.height)[0];
+  if (widest.width / widest.height < 1) return html;
+  return html
+    .replace(/(<meta property="og:image" content=")[^"]*(">)/, `$1${widest.url}$2`)
+    .replace(/(<meta property="og:image:width" content=")[^"]*(">)/, `$1${widest.width}$2`)
+    .replace(/(<meta property="og:image:height" content=")[^"]*(">)/, `$1${widest.height}$2`)
+    .replace(/(<meta name="twitter:image" content=")[^"]*(">)/, `$1${widest.url}$2`);
+}
+
 function formatVerifiedDate(dateString, locale) {
   try {
     return new Date(`${dateString}T00:00:00`).toLocaleDateString(locale, {
@@ -197,19 +409,13 @@ function injectReviews(html, reviewSummary, language) {
     return Array.isArray(type) ? type.includes('BarOrPub') : type === 'BarOrPub';
   });
   if (!businessNode) throw new Error('Could not find the business node in the JSON-LD graph.');
-  businessNode.aggregateRating = {
-    '@type': 'AggregateRating',
-    ratingValue: reviewSummary.ratingValue,
-    bestRating: '5',
-    reviewCount: String(reviewSummary.reviewCount),
-  };
-  businessNode.review = reviewSummary.testimonials.map((testimonial) => ({
-    '@type': 'Review',
-    author: { '@type': 'Person', name: testimonial.author },
-    reviewRating: { '@type': 'Rating', ratingValue: String(Number(testimonial.rating) || 5), bestRating: '5' },
-    reviewBody: testimonial.quote,
-    inLanguage: 'en',
-  }));
+  // No aggregateRating / review markup on the business node. Google does not
+  // allow a business to mark up reviews about itself on its own site
+  // ("self-serving reviews"), so this was ineligible for rich results and a
+  // manual-action risk. The real star rating already shows in the map pack from
+  // Google's own data. The testimonials stay as visible HTML above.
+  delete businessNode.aggregateRating;
+  delete businessNode.review;
   const serialized = JSON.stringify(data, null, 2)
     .split('\n')
     .map((line) => `      ${line}`)
@@ -328,11 +534,11 @@ function buildMenuSchema(products, menuData, language) {
 }
 
 function injectProductGrid(html, gridHtml) {
-  const pattern = /<div class="menu-catalog" id="menu-product-grid" data-product-grid aria-live="polite">[\s\S]*?<\/div>\s*<p class="menu-status"/;
+  const pattern = /<div class="menu-catalog" id="menu-product-grid" data-product-grid[^>]*>[\s\S]*?<\/div>\s*<p class="menu-status"/;
   if (!pattern.test(html)) {
     throw new Error('Could not find the menu-product-grid container to inject into.');
   }
-  const replacement = `<div class="menu-catalog" id="menu-product-grid" data-product-grid aria-live="polite">${gridHtml}</div>\n        <p class="menu-status"`;
+  const replacement = `<div class="menu-catalog" id="menu-product-grid" data-product-grid>${gridHtml}</div>\n        <p class="menu-status"`;
   return html.replace(pattern, replacement);
 }
 
@@ -371,6 +577,19 @@ try {
 }
 
 const reviewSummary = await fetchReviewSummary();
+const siteSettings = await fetchSiteSettings();
+const galleryPhotos = await fetchGalleryPhotos();
+const heroPhotoPath = await localizeHeroPhoto(galleryPhotos[0], targetRoot);
+console.log(
+  galleryPhotos.length
+    ? `Gallery: ${galleryPhotos.length} photos, hero uses the first by sort order.`
+    : 'Gallery: no photos reachable, hero stays typographic.'
+);
+console.log(
+  siteSettings.sunbedPrice
+    ? `Sunbed price: ${siteSettings.sunbedPrice} ${siteSettings.sunbedCurrency}/day.`
+    : 'Sunbed price: not published yet, the price line is hidden.'
+);
 
 const pages = {
   sq: 'index.html',
@@ -386,6 +605,10 @@ for (const language of LOCALES) {
   html = injectProductGrid(html, gridHtml);
   html = injectMenuSchema(html, menuSchema);
   html = injectReviews(html, reviewSummary, language);
+  html = injectSunbedPrice(html, siteSettings, language);
+  html = injectSunbedOffer(html, siteSettings);
+  html = injectHeroPhoto(html, galleryPhotos, language, heroPhotoPath);
+  html = injectSocialImage(html, galleryPhotos);
   await writeFile(filePath, html);
 }
 

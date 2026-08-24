@@ -40,6 +40,7 @@
   const storyTitleEl = document.querySelector('[data-story-title]');
   const storyBodyEl = document.querySelector('[data-story-body]');
   const whatsappButton = document.querySelector('[data-whatsapp-button]');
+  const siteHeader = document.querySelector('.site-header');
   const chatMessagesEl = document.querySelector('[data-chat-messages]');
   const chatEmptyEl = document.querySelector('[data-chat-empty]');
   const chatFormEl = document.querySelector('[data-chat-form]');
@@ -73,6 +74,70 @@
     sq: 'sq-AL',
     it: 'it-IT',
     en: 'en-GB',
+  });
+
+  // The sunbed day rate is editable from /admin, so it is fetched rather than
+  // hardcoded. The build injects the same value into the static HTML for
+  // crawlers; this keeps the page correct between deploys.
+  let sunbedSettings = null;
+
+  async function refreshSunbedPrice() {
+    if (!supabaseConfig.url || !supabaseConfig.publishableKey) return;
+    try {
+      const response = await fetch(
+        `${supabaseConfig.url}/rest/v1/site_settings?select=sunbed_price,sunbed_currency&id=eq.main`,
+        {
+          headers: {
+            apikey: supabaseConfig.publishableKey,
+            Authorization: `Bearer ${supabaseConfig.publishableKey}`,
+          },
+        }
+      );
+      if (!response.ok) return;
+      const rows = await response.json();
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (!row) return;
+      const raw = row.sunbed_price;
+      const price = raw === null || raw === undefined || raw === '' ? null : Number.parseInt(raw, 10);
+      sunbedSettings = {
+        price: Number.isFinite(price) && price > 0 ? price : null,
+        currency: String(row.sunbed_currency || 'ALL').trim() || 'ALL',
+      };
+      renderSunbedPrice();
+    } catch {
+      // Leave whatever the build injected; a stale price beats no price.
+    }
+  }
+
+  function renderSunbedPrice() {
+    const slot = document.querySelector('[data-sunbed-price]');
+    if (!slot || !sunbedSettings) return;
+    if (!sunbedSettings.price) {
+      // No price published yet, or it was cleared from /admin -- show nothing
+      // rather than a placeholder, and clear anything the build injected.
+      slot.textContent = '';
+      slot.hidden = true;
+      return;
+    }
+    slot.textContent = `${sunbedSettings.price} ${sunbedSettings.currency} ${dynamicText('sunbedPerDay')}`;
+    slot.hidden = false;
+  }
+
+  const GALLERY_ALT = Object.freeze({
+    sq: 'Bar Martiri në Spille, Shqipëri — foto',
+    it: 'Bar Martiri a Spille, Albania — foto',
+    en: 'Bar Martiri in Spille, Albania — photo',
+  });
+
+  function galleryFallbackAlt(index) {
+    const base = GALLERY_ALT[currentLanguage] || GALLERY_ALT.sq;
+    return `${base} ${index + 1}`;
+  }
+
+  const LANGUAGE_OFFER = Object.freeze({
+    sq: { label: 'Kjo faqe disponohet edhe në shqip.', accept: 'Shiko në shqip', dismiss: 'Mbyll' },
+    it: { label: 'Questa pagina è disponibile anche in italiano.', accept: 'Vedi in italiano', dismiss: 'Chiudi' },
+    en: { label: 'This page is also available in English.', accept: 'View in English', dismiss: 'Dismiss' },
   });
 
   const SEO_TEXT = Object.freeze({
@@ -124,7 +189,7 @@
     'Sherbimet e Bar Martiri': { sq: 'Shërbimet e Bar Martiri', it: 'Servizi di Bar Martiri', en: 'Bar Martiri services' },
     'Spille · Shqipëri': { sq: 'Spille · Shqipëri', it: 'Spille · Albania', en: 'Spille · Albania' },
     'Akullore në Bar Martiri': { sq: 'Akullore në Bar Martiri', it: 'Gelato al Bar Martiri', en: 'Ice cream at Bar Martiri' },
-    'Akullore e freskët pranë detit.': { sq: 'Akullore e freskët pranë detit.', it: 'Gelato fresco vicino al mare.', en: 'Fresh ice cream by the sea.' },
+    'Akullore e freskët buzë detit në Spille.': { sq: 'Akullore e freskët buzë detit në Spille.', it: 'Gelato fresco in riva al mare a Spille.', en: 'Fresh ice cream by the sea in Spille.' },
     'Vanilje e freskët, e servirur në kaush krokant për një pushim të ëmbël gjatë ditëve të verës në Spille.': { sq: 'Vanilje e freskët, e servirur në kaush krokant për një pushim të ëmbël gjatë ditëve të verës në Spille.', it: 'Vaniglia fresca servita in un cono croccante, per una dolce pausa nelle giornate estive a Spille.', en: 'Fresh vanilla served in a crisp cone for a sweet break during summer days in Spille.' },
     'Informacion për akulloren': { sq: 'Informacion për akulloren', it: 'Informazioni sul gelato', en: 'Ice cream information' },
     'Shërbehet e freskët': { sq: 'Shërbehet e freskët', it: 'Servito fresco', en: 'Served fresh' },
@@ -210,6 +275,13 @@
     'Totali': { sq: 'Totali', it: 'Totale', en: 'Total' },
     'Emri': { sq: 'Emri', it: 'Nome', en: 'Name' },
     'Telefoni (opsionale)': { sq: 'Telefoni (opsionale)', it: 'Telefono (facoltativo)', en: 'Phone (optional)' },
+    'Telefoni': { sq: 'Telefoni', it: 'Telefono', en: 'Phone' },
+    'Zgjidh': { sq: 'Zgjidh', it: 'Scegli', en: 'Choose' },
+    'Numri i sektorit, i rreshtit dhe i çadrës janë të shkruar në shtyllën e çadrës tënde. Porosinë ta sjellim aty, zakonisht brenda 10 minutash. Paguhet në dorëzim.': {
+      sq: 'Numri i sektorit, i rreshtit dhe i çadrës janë të shkruar në shtyllën e çadrës tënde. Porosinë ta sjellim aty, zakonisht brenda 10 minutash. Paguhet në dorëzim.',
+      it: "Il settore, la fila e il numero dell'ombrellone sono scritti sul palo del tuo ombrellone. Portiamo l'ordine lì, di solito entro 10 minuti. Si paga alla consegna.",
+      en: 'Your section, row and umbrella number are printed on your umbrella pole. We bring the order there, usually within 10 minutes. You pay on delivery.',
+    },
     'Shenim shtese (opsionale)': { sq: 'Shënim shtesë (opsionale)', it: 'Nota aggiuntiva (facoltativa)', en: 'Additional note (optional)' },
     'Ku je?': { sq: 'Ku je?', it: 'Dove sei?', en: 'Where are you?' },
     'Sektori': { sq: 'Sektori', it: 'Settore', en: 'Section' },
@@ -220,6 +292,23 @@
     'Galeria': { sq: 'Galeria', it: 'Galleria', en: 'Gallery' },
     'Shkruaj në WhatsApp': { sq: 'Shkruaj në WhatsApp', it: 'Scrivici su WhatsApp', en: 'Message us on WhatsApp' },
     'Emri yt (opsionale)': { sq: 'Emri yt (opsionale)', it: 'Il tuo nome (opzionale)', en: 'Your name (optional)' },
+    'Hap chat-in me ne': { sq: 'Hap chat-in me ne', it: 'Apri la chat con noi', en: 'Open chat with us' },
+    'Mbyll chat-in': { sq: 'Mbyll chat-in', it: 'Chiudi la chat', en: 'Close chat' },
+    'Shkruaji Bar Martiri': { sq: 'Shkruaji Bar Martiri', it: 'Scrivi a Bar Martiri', en: 'Message Bar Martiri' },
+    'Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.': {
+      sq: 'Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.',
+      it: 'Scrivici un messaggio e ti risponderemo il prima possibile.',
+      en: 'Send us a message and we will reply as soon as we can.',
+    },
+    'Shkruaj një mesazh...': { sq: 'Shkruaj një mesazh...', it: 'Scrivi un messaggio...', en: 'Write a message...' },
+    'Dërgo': { sq: 'Dërgo', it: 'Invia', en: 'Send' },
+    'Harta e Bar Martiri në Spille': {
+      sq: 'Harta e Bar Martiri në Spille',
+      it: 'Mappa di Bar Martiri a Spille',
+      en: 'Map of Bar Martiri in Spille',
+    },
+    'Preferencat e cookies': { sq: 'Preferencat e cookies', it: 'Preferenze cookie', en: 'Cookie preferences' },
+    'Spille Sot': { sq: 'Spille Sot', it: 'Spille oggi', en: 'Spille today' },
   });
 
   const DYNAMIC_TEXT = Object.freeze({
@@ -231,6 +320,13 @@
     emptyCategory: { sq: 'Produktet e kësaj kategorie do të shtohen së shpejti.', it: 'I prodotti di questa categoria saranno aggiunti presto.', en: 'Products in this category will be added soon.' },
     noResults: { sq: 'Nuk u gjet asnjë produkt. Provo një emër tjetër.', it: 'Nessun prodotto trovato. Prova un altro nome.', en: 'No products found. Try another name.' },
     unnamedProduct: { sq: 'Pa emër', it: 'Senza nome', en: 'Unnamed' },
+    sunbedPerDay: { sq: 'në ditë', it: 'al giorno', en: 'per day' },
+    chooseOption: { sq: 'Zgjidh', it: 'Scegli', en: 'Choose' },
+    orderConfirm: {
+      sq: 'E sjellim te sektori {section}, rreshti {row}, çadra {number}.',
+      it: 'Lo portiamo al settore {section}, fila {row}, ombrellone {number}.',
+      en: 'We will bring it to section {section}, row {row}, umbrella {number}.',
+    },
     reviewVerifiedPrefix: { sq: 'Vlerësimi, i verifikuar për herë të fundit më', it: 'La valutazione, verificata l’ultima volta il', en: 'The rating, last verified on' },
     reviewBasedOnSuffix: { sq: 'bazohet në', it: 'si basa su', en: 'is based on' },
     reviewCountSuffix: { sq: 'vlerësime në Google.', it: 'recensioni su Google.', en: 'Google reviews.' },
@@ -404,9 +500,23 @@
     return productTranslationFor(product)?.description || product.description || '';
   }
 
+  // Chrome ships no `sq` locale, so Intl silently resolves 'sq-AL' to en-US and
+  // Albanian dates came out as "August 3, 2026" -- month name and order both
+  // wrong, and only in the site's own default language. Format Albanian by hand;
+  // it-IT and en-GB are real locales and Intl handles them correctly.
+  const SQ_MONTHS = [
+    'janar', 'shkurt', 'mars', 'prill', 'maj', 'qershor',
+    'korrik', 'gusht', 'shtator', 'tetor', 'nëntor', 'dhjetor',
+  ];
+
   function formatVerifiedDate(dateString) {
     try {
-      return new Date(`${dateString}T00:00:00`).toLocaleDateString(LANGUAGE_LOCALES[currentLanguage], {
+      const date = new Date(`${dateString}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return dateString;
+      if (currentLanguage === 'sq') {
+        return `${date.getDate()} ${SQ_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+      }
+      return date.toLocaleDateString(LANGUAGE_LOCALES[currentLanguage], {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -414,6 +524,13 @@
     } catch {
       return dateString;
     }
+  }
+
+  // Same reason: 'sq-AL' would fall back to en-US and print 2.7 where Albanian
+  // and Italian both write 2,7.
+  function formatDecimal(value) {
+    const text = String(value);
+    return currentLanguage === 'en' ? text : text.replace('.', ',');
   }
 
   function renderReviews() {
@@ -680,7 +797,7 @@
     if (!supabaseConfig.url || !supabaseConfig.publishableKey || !galleryGridEl) return;
     try {
       const response = await fetch(
-        `${supabaseConfig.url}/rest/v1/gallery_images?select=image_url&order=sort_order.asc`,
+        `${supabaseConfig.url}/rest/v1/gallery_images?select=*&order=sort_order.asc`,
         {
           headers: {
             apikey: supabaseConfig.publishableKey,
@@ -693,14 +810,18 @@
       if (!Array.isArray(rows) || !rows.length) return;
 
       galleryGridEl.replaceChildren();
-      rows.forEach((row) => {
+      rows.forEach((row, index) => {
         if (!row.image_url) return;
         const figure = document.createElement('figure');
         figure.className = 'gallery-item';
         const img = document.createElement('img');
         img.src = row.image_url;
-        img.alt = '';
+        // These are the only photographs of the place on the site. An empty alt
+        // keeps them out of image search entirely, so prefer a real caption from
+        // the CMS and fall back to a truthful localized description.
+        img.alt = String(row.alt_text || row.caption || '').trim() || galleryFallbackAlt(index);
         img.loading = 'lazy';
+        img.decoding = 'async';
         figure.append(img);
         galleryGridEl.append(figure);
       });
@@ -709,6 +830,9 @@
       // Keep the gallery section hidden if it isn't reachable yet.
     }
   }
+
+  const OPENING_HOUR = 6;
+  const CLOSING_HOUR = 23;
 
   function isWhatsAppHour() {
     try {
@@ -719,9 +843,10 @@
           timeZone: 'Europe/Tirane',
         }).format(new Date())
       );
-      return hour >= 18;
+      return hour >= OPENING_HOUR && hour < CLOSING_HOUR;
     } catch {
-      return new Date().getHours() >= 18;
+      const hour = new Date().getHours();
+      return hour >= OPENING_HOUR && hour < CLOSING_HOUR;
     }
   }
 
@@ -1007,9 +1132,12 @@
     const umbrellaNumber = Number(formData.get('umbrellaNumber'));
     if (
       !customerName ||
+      !customerPhone ||
       !umbrellaSection ||
       !Number.isFinite(umbrellaRow) ||
+      umbrellaRow < 1 ||
       !Number.isFinite(umbrellaNumber) ||
+      umbrellaNumber < 1 ||
       !supabaseConfig.url ||
       !supabaseConfig.publishableKey
     ) {
@@ -1074,35 +1202,77 @@
     }
   }
 
+  function placeholderOption() {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = dynamicText('chooseOption');
+    option.disabled = true;
+    return option;
+  }
+
+  function updateOrderConfirm() {
+    const slot = document.querySelector('[data-order-confirm]');
+    if (!slot) return;
+    const section = document.querySelector('[data-umbrella-section]')?.value;
+    const row = umbrellaRowSelect?.value;
+    const number = umbrellaNumberSelect?.value;
+    if (!section || !row || !number) {
+      slot.hidden = true;
+      slot.textContent = '';
+      return;
+    }
+    slot.textContent = dynamicText('orderConfirm')
+      .replace('{section}', section)
+      .replace('{row}', row)
+      .replace('{number}', number);
+    slot.hidden = false;
+  }
+
   function populateUmbrellaNumbers() {
     if (!umbrellaRowSelect || !umbrellaNumberSelect) return;
-    const row = Number(umbrellaRowSelect.value) || 1;
-    const count = umbrellasInRow(row);
+    const row = Number(umbrellaRowSelect.value) || 0;
     const previous = Number(umbrellaNumberSelect.value) || 0;
     umbrellaNumberSelect.replaceChildren();
+    umbrellaNumberSelect.append(placeholderOption());
+    if (!row) {
+      umbrellaNumberSelect.value = '';
+      updateOrderConfirm();
+      return;
+    }
+    const count = umbrellasInRow(row);
     for (let number = 1; number <= count; number += 1) {
       const option = document.createElement('option');
       option.value = String(number);
       option.textContent = String(number);
       umbrellaNumberSelect.append(option);
     }
-    umbrellaNumberSelect.value = String(previous >= 1 && previous <= count ? previous : 1);
+    umbrellaNumberSelect.value = previous >= 1 && previous <= count ? String(previous) : '';
+    updateOrderConfirm();
   }
 
   function populateUmbrellaSelectors() {
     if (!umbrellaRowSelect) return;
     if (!umbrellaRowSelect.children.length) {
+      umbrellaRowSelect.append(placeholderOption());
       for (let row = 1; row <= UMBRELLA_ROWS; row += 1) {
         const option = document.createElement('option');
         option.value = String(row);
         option.textContent = String(row);
         umbrellaRowSelect.append(option);
       }
+      umbrellaRowSelect.value = '';
     }
     populateUmbrellaNumbers();
   }
 
   umbrellaRowSelect?.addEventListener('change', populateUmbrellaNumbers);
+  umbrellaNumberSelect?.addEventListener('change', updateOrderConfirm);
+  document.querySelector('[data-umbrella-section]')?.addEventListener('change', updateOrderConfirm);
+
+  // An empty basket used to say "your basket is empty" and offer no way out.
+  document.querySelector('[data-basket-browse]')?.addEventListener('click', (event) => {
+    openPanel('menu', event.currentTarget);
+  });
   populateUmbrellaSelectors();
 
   checkoutForm?.addEventListener('submit', submitOrder);
@@ -1135,7 +1305,9 @@
       element.textContent = dynamicText(element.dataset.i18nDynamic);
     });
     languageSwitches.forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.dataset.languageSwitch === currentLanguage));
+      const selected = button.dataset.languageSwitch === currentLanguage;
+      button.setAttribute('aria-pressed', String(selected));
+      if (button.getAttribute('role') === 'option') button.setAttribute('aria-selected', String(selected));
     });
     syncLanguageSwitchers();
 
@@ -1145,7 +1317,28 @@
     }
     renderReviews();
     renderStory();
+    renderSunbedPrice();
     renderBasket();
+  }
+
+  const SCROLL_RESTORE_KEY = 'barMartiri.scrollRestore.v1';
+
+  function restoreScrollAfterLanguageSwitch() {
+    let saved = null;
+    try {
+      saved = sessionStorage.getItem(SCROLL_RESTORE_KEY);
+      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
+    } catch {
+      return;
+    }
+    const top = Number(saved);
+    if (!Number.isFinite(top) || top <= 0) return;
+    // The pinned flavour section sets the page height, so wait until layout has
+    // settled before jumping, and do it instantly rather than smooth-scrolling.
+    const jump = () => window.scrollTo({ top, behavior: 'instant' });
+    jump();
+    window.setTimeout(jump, 120);
+    window.addEventListener('load', () => window.setTimeout(jump, 60), { once: true });
   }
 
   function detectBrowserLanguage() {
@@ -1157,31 +1350,84 @@
     return 'sq';
   }
 
+  // Returns both the language and WHERE it came from. The source matters: a
+  // language the visitor explicitly picked may redirect, a language merely
+  // guessed from navigator.languages must not (see initializeLanguage).
   function getInitialLanguage() {
     const routeLanguage = document.documentElement.dataset.initialLanguage;
-    if (LANGUAGE_LOCALES[routeLanguage]) return routeLanguage;
+    if (LANGUAGE_LOCALES[routeLanguage]) return { language: routeLanguage, source: 'route' };
     const cookieLanguage = readCookie(LANGUAGE_COOKIE_NAME);
-    if (LANGUAGE_LOCALES[cookieLanguage]) return cookieLanguage;
+    if (LANGUAGE_LOCALES[cookieLanguage]) return { language: cookieLanguage, source: 'chosen' };
     try {
       const savedLanguage = localStorage.getItem(LANGUAGE_KEY);
-      if (LANGUAGE_LOCALES[savedLanguage]) return savedLanguage;
+      if (LANGUAGE_LOCALES[savedLanguage]) return { language: savedLanguage, source: 'chosen' };
     } catch {
       // The language switcher remains available when storage is unavailable.
     }
-    return detectBrowserLanguage();
+    return { language: detectBrowserLanguage(), source: 'guessed' };
   }
 
   function initializeLanguage() {
-    const initialLanguage = getInitialLanguage();
+    const { language: initialLanguage, source } = getInitialLanguage();
     const languagePath = SEO_TEXT[initialLanguage]?.path;
     const routeLanguage = document.documentElement.dataset.initialLanguage;
-    if (!routeLanguage && languagePath && window.location.pathname !== languagePath) {
+    const elsewhere = !routeLanguage && languagePath && window.location.pathname !== languagePath;
+
+    // Only a language the visitor actually chose earns a redirect. "/" is our
+    // canonical and hreflang x-default, and it used to bounce anyone whose
+    // browser reported a non-Albanian locale -- including Googlebot, which
+    // renders with an English locale. That made the default page redirect away
+    // from itself and put its indexing at risk. Guessed languages now get a
+    // dismissible suggestion instead, so "/" stays a real, crawlable page.
+    if (elsewhere && source === 'chosen') {
       window.location.replace(languagePath);
       return;
     }
-    applyLanguage(initialLanguage);
+
+    applyLanguage(routeLanguage && LANGUAGE_LOCALES[routeLanguage] ? routeLanguage : (elsewhere ? 'sq' : initialLanguage));
+    if (elsewhere && source === 'guessed') offerLanguage(initialLanguage, languagePath);
     void refreshProducts();
+    void refreshSunbedPrice();
+    restoreScrollAfterLanguageSwitch();
     scheduleStoryMotion();
+  }
+
+  // Non-blocking "this page is also available in X" bar. Replaces the old
+  // automatic redirect; keeps the visitor one tap from their own language.
+  function offerLanguage(language, languagePath) {
+    const copy = LANGUAGE_OFFER[language];
+    if (!copy || document.querySelector('[data-language-offer]')) return;
+
+    const bar = document.createElement('aside');
+    bar.className = 'language-offer';
+    bar.setAttribute('data-language-offer', '');
+    bar.lang = LANGUAGE_LOCALES[language] || language;
+
+    const link = document.createElement('a');
+    link.href = languagePath;
+    link.className = 'language-offer-accept';
+    link.textContent = copy.accept;
+    link.addEventListener('click', () => {
+      try {
+        localStorage.setItem(LANGUAGE_KEY, language);
+      } catch {
+        // Navigation still applies when storage is unavailable.
+      }
+      writeCookie(LANGUAGE_COOKIE_NAME, language);
+    });
+
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'language-offer-dismiss';
+    dismiss.setAttribute('aria-label', copy.dismiss);
+    dismiss.textContent = '×';
+    dismiss.addEventListener('click', () => bar.remove());
+
+    const label = document.createElement('span');
+    label.textContent = copy.label;
+
+    bar.append(label, link, dismiss);
+    document.body.append(bar);
   }
 
   languageSwitches.forEach((button) => {
@@ -1195,6 +1441,15 @@
           // Navigation still applies when storage is unavailable.
         }
         writeCookie(LANGUAGE_COOKIE_NAME, language);
+        // Switching language is a full navigation, so the reader lands at the top
+        // of the new page. Someone who scrolled to the address and then wanted it
+        // in their own language had to scroll all the way back down. Carry the
+        // position across and restore it once the new page is laid out.
+        try {
+          sessionStorage.setItem(SCROLL_RESTORE_KEY, String(Math.round(window.scrollY)));
+        } catch {
+          // Restoring is a nicety; navigate regardless.
+        }
         window.location.assign(languagePath);
         return;
       }
@@ -1294,7 +1549,7 @@
   }
 
   function formatSpilleTime(date) {
-    return new Intl.DateTimeFormat('sq-AL', {
+    return new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Europe/Tirane',
       hour: '2-digit',
       minute: '2-digit',
@@ -1345,20 +1600,52 @@
       .forEach((item) => (item.textContent = formatSpilleTime(sunset)));
   }
 
+  // The Albanian here was previously unaccented ("Mundesi", "I qete", "ere") and
+  // had no it/en equivalents, so /it/ and /en/ showed misspelled Albanian once
+  // the widget loaded.
+  const WEATHER_CONDITION = Object.freeze({
+    thunder: { sq: 'Stuhi në afërsi', it: 'Temporali nelle vicinanze', en: 'Storms nearby' },
+    rain: { sq: 'Mundësi reshjesh', it: 'Possibili piogge', en: 'Rain possible' },
+    fog: { sq: 'Mjegull në breg', it: 'Nebbia sulla costa', en: 'Fog on the shore' },
+    partlycloudy: { sq: 'Pjesërisht me re', it: 'Parzialmente nuvoloso', en: 'Partly cloudy' },
+    cloudy: { sq: 'Me re', it: 'Nuvoloso', en: 'Cloudy' },
+    fair: { sq: 'Kthjellime', it: 'Sereno', en: 'Fair' },
+    clear: { sq: 'Qiell i kthjellët', it: 'Cielo sereno', en: 'Clear sky' },
+  });
+
+  const SEA_STATE = Object.freeze({
+    calm: { sq: 'i qetë', it: 'calmo', en: 'calm' },
+    light: { sq: 'me lëvizje të lehtë', it: 'poco mosso', en: 'slightly choppy' },
+    windy: { sq: 'me erë', it: 'mosso', en: 'choppy' },
+  });
+
+  const WEATHER_SENTENCE = Object.freeze({
+    sq: (c, t, uv, w, sea, at) =>
+      `${c}, ${t} gradë. UV ${uv}, erë ${w} kilometra në orë, deti ${sea}. Përditësuar ${at}.`,
+    it: (c, t, uv, w, sea, at) =>
+      `${c}, ${t} gradi. UV ${uv}, vento ${w} chilometri orari, mare ${sea}. Aggiornato alle ${at}.`,
+    en: (c, t, uv, w, sea, at) =>
+      `${c}, ${t} degrees. UV ${uv}, wind ${w} kilometres per hour, sea ${sea}. Updated ${at}.`,
+  });
+
+  function localized(table, key) {
+    return table[key]?.[currentLanguage] || table[key]?.sq || '';
+  }
+
   function weatherDescription(symbolCode = '') {
-    if (symbolCode.includes('thunder')) return 'Stuhi ne afersi';
-    if (symbolCode.includes('rain') || symbolCode.includes('sleet')) return 'Mundesi reshjesh';
-    if (symbolCode.includes('fog')) return 'Mjegull ne breg';
-    if (symbolCode.includes('partlycloudy')) return 'Pjeserisht me re';
-    if (symbolCode.includes('cloudy')) return 'Me re';
-    if (symbolCode.includes('fair')) return 'Kthjellime';
-    return 'Qiell i kthjellet';
+    if (symbolCode.includes('thunder')) return localized(WEATHER_CONDITION, 'thunder');
+    if (symbolCode.includes('rain') || symbolCode.includes('sleet')) return localized(WEATHER_CONDITION, 'rain');
+    if (symbolCode.includes('fog')) return localized(WEATHER_CONDITION, 'fog');
+    if (symbolCode.includes('partlycloudy')) return localized(WEATHER_CONDITION, 'partlycloudy');
+    if (symbolCode.includes('cloudy')) return localized(WEATHER_CONDITION, 'cloudy');
+    if (symbolCode.includes('fair')) return localized(WEATHER_CONDITION, 'fair');
+    return localized(WEATHER_CONDITION, 'clear');
   }
 
   function coastalEstimate(windSpeedKmh) {
-    if (windSpeedKmh < 12) return 'I qete';
-    if (windSpeedKmh < 25) return 'Levizje e lehte';
-    return 'Me ere';
+    if (windSpeedKmh < 12) return localized(SEA_STATE, 'calm');
+    if (windSpeedKmh < 25) return localized(SEA_STATE, 'light');
+    return localized(SEA_STATE, 'windy');
   }
 
   function weatherIcon(symbolCode = '') {
@@ -1386,7 +1673,7 @@
       .forEach((item) => (item.textContent = temperature));
     document
       .querySelectorAll('[data-ticker-uv]')
-      .forEach((item) => (item.textContent = uv.toLocaleString('sq-AL')));
+      .forEach((item) => (item.textContent = formatDecimal(uv)));
     document
       .querySelectorAll('[data-ticker-wind]')
       .forEach((item) => (item.textContent = windSpeed));
@@ -1395,10 +1682,15 @@
     });
     const summary = document.querySelector('[data-weather-summary]');
     if (summary) {
-      summary.textContent =
-        `${weatherDescription(symbol)}, ${temperature} grade. ` +
-        `UV ${uv.toLocaleString('sq-AL')}, ere ${windSpeed} kilometra ne ore, ` +
-        `deti ${coastalEstimate(windSpeed)}. Perditesuar ${formatSpilleTime(new Date(savedAt))}.`;
+      const sentence = WEATHER_SENTENCE[currentLanguage] || WEATHER_SENTENCE.sq;
+      summary.textContent = sentence(
+        weatherDescription(symbol),
+        temperature,
+        formatDecimal(uv),
+        windSpeed,
+        coastalEstimate(windSpeed),
+        formatSpilleTime(new Date(savedAt))
+      );
     }
     return true;
   }
@@ -1836,7 +2128,11 @@
     target.classList.remove('is-header-compact');
     lastPanelScrollY = 0;
     document.body.classList.add('is-panel-open');
+    document.getElementById('main')?.setAttribute('inert', '');
+    document.querySelector('.site-header')?.setAttribute('inert', '');
     dock?.classList.remove('is-compact');
+    dock?.classList.remove('is-out');
+    siteHeader?.classList.remove('is-out');
     setDockActive(name);
 
     if (name === 'menu') {
@@ -1862,7 +2158,13 @@
           { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
         );
       }
-      getFocusable(target)[0]?.focus();
+      const closeButton = target.querySelector('[data-panel-close]');
+      if (closeButton) {
+        closeButton.focus();
+      } else {
+        target.setAttribute('tabindex', '-1');
+        target.focus();
+      }
     });
   }
 
@@ -1878,6 +2180,8 @@
     panelLayer.classList.remove('is-visible');
     closingPanel?.classList.remove('is-open');
     document.body.classList.remove('is-panel-open');
+    document.getElementById('main')?.removeAttribute('inert');
+    document.querySelector('.site-header')?.removeAttribute('inert');
     if (!options.keepActive) setDockActive('home');
 
     closeTimer = window.setTimeout(() => {
@@ -1952,6 +2256,13 @@
     const delta = nextScrollY - previous;
     if (Math.abs(delta) > 5) {
       dock?.classList.toggle('is-compact', delta > 0 && nextScrollY > 90);
+      if (!isPanelScroll) {
+        const hide = delta > 0 && nextScrollY > 260;
+        dock?.classList.toggle('is-out', hide);
+        // Same rule for the header, so the language switcher is always one
+        // upward scroll away instead of gone for the rest of the page.
+        siteHeader?.classList.toggle('is-out', hide);
+      }
     }
     if (isPanelScroll) lastPanelScrollY = nextScrollY;
     else lastScrollY = nextScrollY;
@@ -2006,8 +2317,9 @@
       document.documentElement.style.removeProperty('--cookie-banner-offset');
       return;
     }
-    const bottom = cookieBanner.getBoundingClientRect().bottom;
-    document.documentElement.style.setProperty('--cookie-banner-offset', `${Math.max(0, bottom + 16)}px`);
+    const { top } = cookieBanner.getBoundingClientRect();
+    const reserved = window.innerHeight - top + 16;
+    document.documentElement.style.setProperty('--cookie-banner-offset', `${Math.max(0, reserved)}px`);
   }
 
   function showCookieBanner() {
