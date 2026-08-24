@@ -374,8 +374,8 @@ svg {
 
 .flavor-story {
   position: relative;
-  height: 360vh;
-  min-height: 2500px;
+  height: 220vh;
+  min-height: 1500px;
   background: var(--paper-strong);
 }
 
@@ -2381,8 +2381,8 @@ body:has(.dock-panel.is-open) .cookie-banner {
   }
 
   .flavor-story {
-    height: 320vh;
-    min-height: 2100px;
+    height: 200vh;
+    min-height: 1300px;
   }
 
   .flavor-stage {
