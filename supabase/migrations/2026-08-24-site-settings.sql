@@ -3,12 +3,12 @@
 -- existing database can be brought up to date without re-running the whole
 -- setup script. Safe to run more than once.
 --
--- Until this runs, the site falls back to 700 ALL and /admin shows an error on
--- the Çmimet tab.
+-- The price starts empty: nothing is shown on the site until one is saved from
+-- /admin. Until this migration runs, the Çmimet tab shows an error.
 
 create table if not exists public.site_settings (
   id text primary key default 'main',
-  sunbed_price integer not null default 700,
+  sunbed_price integer,  -- null until a price is published from /admin
   sunbed_currency text not null default 'ALL',
   updated_at timestamptz not null default now()
 );
@@ -36,5 +36,5 @@ to authenticated
 using (public.is_menu_admin())
 with check (public.is_menu_admin());
 
--- Sanity check: should return one row, 700 / ALL.
+-- Sanity check: should return one row with a null sunbed_price.
 -- select * from public.site_settings;

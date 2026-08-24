@@ -164,7 +164,7 @@ async function fetchReviewSummary() {
   }
 }
 
-const DEFAULT_SETTINGS = { sunbedPrice: 700, sunbedCurrency: 'ALL' };
+const DEFAULT_SETTINGS = { sunbedPrice: null, sunbedCurrency: 'ALL' };
 const SUNBED_PER_DAY = { sq: 'në ditë', it: 'al giorno', en: 'per day' };
 
 async function fetchSiteSettings() {
@@ -180,9 +180,10 @@ async function fetchSiteSettings() {
     if (!response.ok) throw new Error(`Supabase request failed with ${response.status}`);
     const row = (await response.json())?.[0];
     if (!row) throw new Error('No site settings row found');
-    const price = Number.parseInt(row.sunbed_price, 10);
+    const raw = row.sunbed_price;
+    const price = raw === null || raw === undefined || raw === '' ? null : Number.parseInt(raw, 10);
     return {
-      sunbedPrice: Number.isFinite(price) && price >= 0 ? price : DEFAULT_SETTINGS.sunbedPrice,
+      sunbedPrice: Number.isFinite(price) && price > 0 ? price : null,
       sunbedCurrency: String(row.sunbed_currency || '').trim() || DEFAULT_SETTINGS.sunbedCurrency,
     };
   } catch (error) {
@@ -197,6 +198,9 @@ async function fetchSiteSettings() {
 function injectSunbedPrice(html, settings, language) {
   const pattern = /<p class="service-price" data-sunbed-price[^>]*><\/p>/;
   if (!pattern.test(html)) throw new Error('Could not find the sunbed price placeholder.');
+  if (!settings.sunbedPrice) {
+    return html.replace(pattern, '<p class="service-price" data-sunbed-price hidden></p>');
+  }
   const perDay = SUNBED_PER_DAY[language] || SUNBED_PER_DAY.sq;
   const text = `${settings.sunbedPrice} ${settings.sunbedCurrency} ${perDay}`;
   return html.replace(pattern, `<p class="service-price" data-sunbed-price>${escapeHtml(text)}</p>`);
@@ -214,6 +218,14 @@ function injectSunbedOffer(html, settings) {
     return Array.isArray(type) ? type.includes('BarOrPub') : type === 'BarOrPub';
   });
   if (!businessNode) throw new Error('Could not find the business node in the JSON-LD graph.');
+  if (!settings.sunbedPrice) {
+    delete businessNode.makesOffer;
+    const cleaned = JSON.stringify(data, null, 2)
+      .split('\n')
+      .map((line) => `      ${line}`)
+      .join('\n');
+    return html.replace(businessMatch[0], `<script type="application/ld+json">\n${cleaned}\n    </script>`);
+  }
   businessNode.makesOffer = [
     {
       '@type': 'Offer',
@@ -447,7 +459,11 @@ try {
 
 const reviewSummary = await fetchReviewSummary();
 const siteSettings = await fetchSiteSettings();
-console.log(`Sunbed price: ${siteSettings.sunbedPrice} ${siteSettings.sunbedCurrency}/day.`);
+console.log(
+  siteSettings.sunbedPrice
+    ? `Sunbed price: ${siteSettings.sunbedPrice} ${siteSettings.sunbedCurrency}/day.`
+    : 'Sunbed price: not published yet, the price line is hidden.'
+);
 
 const pages = {
   sq: 'index.html',

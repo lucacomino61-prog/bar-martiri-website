@@ -250,7 +250,7 @@ with check (public.is_menu_admin());
 -- without a deploy.
 create table if not exists public.site_settings (
   id text primary key default 'main',
-  sunbed_price integer not null default 700,
+  sunbed_price integer,  -- null until a price is published from /admin
   sunbed_currency text not null default 'ALL',
   updated_at timestamptz not null default now()
 );

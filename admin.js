@@ -292,7 +292,7 @@
     if (!store?.getSettings || !settingsForm) return;
     try {
       const settings = await store.getSettings();
-      settingsForm.elements.sunbedPrice.value = settings.sunbedPrice;
+      settingsForm.elements.sunbedPrice.value = settings.sunbedPrice ?? '';
       settingsForm.elements.sunbedCurrency.value = settings.sunbedCurrency;
     } catch {
       setError(settingsError, 'Çmimi nuk mund të ngarkohet.');
@@ -304,11 +304,13 @@
     setError(settingsError, '');
     if (settingsStatus) settingsStatus.textContent = '';
 
-    const sunbedPrice = Number.parseInt(settingsForm.elements.sunbedPrice.value, 10);
+    const rawPrice = settingsForm.elements.sunbedPrice.value.trim();
+    const sunbedPrice = rawPrice === '' ? null : Number.parseInt(rawPrice, 10);
     const sunbedCurrency = settingsForm.elements.sunbedCurrency.value.trim();
 
-    if (!Number.isFinite(sunbedPrice) || sunbedPrice < 0) {
-      setError(settingsError, 'Shkruaj një çmim të vlefshëm.');
+    // Empty is a valid choice: it hides the price line on the site.
+    if (rawPrice !== '' && (!Number.isFinite(sunbedPrice) || sunbedPrice <= 0)) {
+      setError(settingsError, 'Shkruaj një çmim të vlefshëm ose lëre bosh.');
       return;
     }
     if (!sunbedCurrency) {
@@ -320,7 +322,8 @@
     try {
       if (submitButton) submitButton.disabled = true;
       await store.saveSettings({ sunbedPrice, sunbedCurrency });
-      if (settingsStatus) settingsStatus.textContent = 'Çmimi u ruajt.';
+      if (settingsStatus)
+        settingsStatus.textContent = sunbedPrice ? 'Çmimi u ruajt.' : 'Çmimi u hoq nga faqja.';
       window.BAR_MARTIRI_INDEXNOW?.submit();
     } catch (error) {
       setError(settingsError, error.message || 'Çmimi nuk mund të ruhet.');

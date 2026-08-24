@@ -444,13 +444,16 @@
   }
 
   const SETTINGS_KEY = 'barMartiri.admin.settings.v1';
-  const DEFAULT_SETTINGS = Object.freeze({ sunbedPrice: 700, sunbedCurrency: 'ALL' });
+  // sunbedPrice is null until one is published from /admin. Null is the normal
+  // resting state, not an error: the site simply shows no price.
+  const DEFAULT_SETTINGS = Object.freeze({ sunbedPrice: null, sunbedCurrency: 'ALL' });
 
   function normalizeSettings(row) {
-    const price = Number.parseInt(row?.sunbed_price ?? row?.sunbedPrice, 10);
+    const raw = row?.sunbed_price ?? row?.sunbedPrice;
+    const price = raw === null || raw === undefined || raw === '' ? null : Number.parseInt(raw, 10);
     const currency = String(row?.sunbed_currency ?? row?.sunbedCurrency ?? '').trim();
     return {
-      sunbedPrice: Number.isFinite(price) && price >= 0 ? price : DEFAULT_SETTINGS.sunbedPrice,
+      sunbedPrice: Number.isFinite(price) && price > 0 ? price : null,
       sunbedCurrency: currency || DEFAULT_SETTINGS.sunbedCurrency,
     };
   }

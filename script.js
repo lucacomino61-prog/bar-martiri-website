@@ -96,9 +96,12 @@
       const rows = await response.json();
       const row = Array.isArray(rows) ? rows[0] : null;
       if (!row) return;
-      const price = Number.parseInt(row.sunbed_price, 10);
-      if (!Number.isFinite(price) || price < 0) return;
-      sunbedSettings = { price, currency: String(row.sunbed_currency || 'ALL').trim() || 'ALL' };
+      const raw = row.sunbed_price;
+      const price = raw === null || raw === undefined || raw === '' ? null : Number.parseInt(raw, 10);
+      sunbedSettings = {
+        price: Number.isFinite(price) && price > 0 ? price : null,
+        currency: String(row.sunbed_currency || 'ALL').trim() || 'ALL',
+      };
       renderSunbedPrice();
     } catch {
       // Leave whatever the build injected; a stale price beats no price.
@@ -108,6 +111,13 @@
   function renderSunbedPrice() {
     const slot = document.querySelector('[data-sunbed-price]');
     if (!slot || !sunbedSettings) return;
+    if (!sunbedSettings.price) {
+      // No price published yet, or it was cleared from /admin -- show nothing
+      // rather than a placeholder, and clear anything the build injected.
+      slot.textContent = '';
+      slot.hidden = true;
+      return;
+    }
     slot.textContent = `${sunbedSettings.price} ${sunbedSettings.currency} ${dynamicText('sunbedPerDay')}`;
     slot.hidden = false;
   }
