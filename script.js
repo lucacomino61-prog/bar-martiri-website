@@ -2131,8 +2131,6 @@
     document.getElementById('main')?.setAttribute('inert', '');
     document.querySelector('.site-header')?.setAttribute('inert', '');
     dock?.classList.remove('is-compact');
-    dock?.classList.remove('is-out');
-    siteHeader?.classList.remove('is-out');
     setDockActive(name);
 
     if (name === 'menu') {
@@ -2254,15 +2252,13 @@
   function updateDockForScroll(nextScrollY, isPanelScroll = false) {
     const previous = isPanelScroll ? lastPanelScrollY : lastScrollY;
     const delta = nextScrollY - previous;
+    // Both bars stay put at every scroll position: the dock is the only
+    // navigation and the header holds the language switcher, so neither may
+    // disappear. The header shrinks instead, which keeps it reachable without
+    // costing a fixed slice of a phone screen.
+    if (!isPanelScroll) siteHeader?.classList.toggle('is-compact', nextScrollY > 90);
     if (Math.abs(delta) > 5) {
       dock?.classList.toggle('is-compact', delta > 0 && nextScrollY > 90);
-      if (!isPanelScroll) {
-        const hide = delta > 0 && nextScrollY > 260;
-        dock?.classList.toggle('is-out', hide);
-        // Same rule for the header, so the language switcher is always one
-        // upward scroll away instead of gone for the rest of the page.
-        siteHeader?.classList.toggle('is-out', hide);
-      }
     }
     if (isPanelScroll) lastPanelScrollY = nextScrollY;
     else lastScrollY = nextScrollY;
