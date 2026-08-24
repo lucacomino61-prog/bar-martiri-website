@@ -7,6 +7,7 @@
   --paper-strong: #fffdf8;
   --ink: #151515;
   --ink-soft: #69665f;
+  --ink-soft-on-mint: #3a372f;
   --line: #d5d0c6;
   --line-strong: #9f9a91;
   --white: #ffffff;
@@ -24,7 +25,7 @@
   --scrim: rgba(21, 21, 21, 0.38);
   --shadow-soft: rgba(21, 21, 21, 0.14);
   --shadow-strong: rgba(21, 21, 21, 0.24);
-  --focus: #1268a0;
+  --focus: #0d5182;
   --danger: #a12626;
 
   --content: 1240px;
@@ -713,7 +714,7 @@ svg {
 }
 
 .visit-hours dt {
-  color: var(--ink-soft);
+  color: var(--ink-soft-on-mint);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
@@ -732,7 +733,7 @@ svg {
 }
 
 .visit-hours span {
-  color: var(--ink-soft);
+  color: var(--ink);
   font-size: 13px;
 }
 
@@ -1009,7 +1010,21 @@ svg {
     width 380ms var(--ease-out),
     height 380ms var(--ease-out),
     border-radius 380ms var(--ease-out),
-    background-color 380ms var(--ease-out);
+    background-color 380ms var(--ease-out),
+    transform 260ms var(--ease-out),
+    opacity 260ms var(--ease-out);
+}
+
+/* The dock is fixed, centred and 330px wide, so any full-width control that
+   happens to land in the bottom band gets its middle swallowed -- measured at
+   100% of "Open map" dead at one scroll position. Section padding cannot fix a
+   positional overlap, so the dock steps out of the way on scroll-down and
+   returns on scroll-up. Default is VISIBLE and this class HIDES: never invert
+   that, or a dock mounted after the first scroll event never reappears. */
+.bottom-dock.is-out {
+  transform: translate(-50%, calc(100% + 28px));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .bottom-dock.is-compact {
@@ -1261,8 +1276,9 @@ svg {
   font-size: 16px;
 }
 
-.chat-name-input:focus {
-  outline: none;
+.chat-name-input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
   border-color: var(--ink);
 }
 
@@ -1282,21 +1298,23 @@ svg {
 .chat-composer input {
   flex: 1;
   min-width: 0;
-  min-height: 24px;
+  min-height: 44px;
   border: none;
   background: transparent;
   font-size: 16px;
 }
 
-.chat-composer input:focus {
-  outline: none;
+.chat-composer input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .chat-composer-send {
   display: grid;
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border-radius: 50%;
   background: var(--ink);
@@ -1587,8 +1605,8 @@ svg {
 
 .add-to-basket {
   flex: 0 0 auto;
-  min-height: 30px;
-  padding: 0 12px;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--ink);
   border-radius: 999px;
   background: transparent;
@@ -2012,7 +2030,8 @@ svg {
 .cookie-banner {
   position: fixed;
   z-index: 70;
-  top: calc(max(12px, env(safe-area-inset-top)) + 76px);
+  top: auto;
+  bottom: calc(var(--dock-height) + max(14px, env(safe-area-inset-bottom)) + 14px);
   left: var(--page-pad);
   display: grid;
   width: min(320px, calc(100% - (var(--page-pad) * 2)));
@@ -2023,15 +2042,22 @@ svg {
   background: var(--paper-strong);
   box-shadow: 0 18px 50px var(--shadow-strong);
   opacity: 0;
-  transform: translateY(-14px);
+  transform: translateY(14px);
   transition:
     opacity 220ms var(--ease-standard),
     transform 300ms var(--ease-out);
 }
 
 #main {
-  padding-top: var(--cookie-banner-offset, 0px);
-  transition: padding-top 240ms var(--ease-standard);
+  padding-bottom: var(--cookie-banner-offset, 0px);
+  transition: padding-bottom 240ms var(--ease-standard);
+}
+
+/* never let the consent card sit on top of an open dock panel:
+   it was making the menu search field and all six category tabs unhittable */
+body:has(.dock-panel.is-open) .cookie-banner {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .cookie-banner.is-visible {

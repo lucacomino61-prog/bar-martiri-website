@@ -1837,6 +1837,7 @@
     lastPanelScrollY = 0;
     document.body.classList.add('is-panel-open');
     dock?.classList.remove('is-compact');
+    dock?.classList.remove('is-out');
     setDockActive(name);
 
     if (name === 'menu') {
@@ -1952,6 +1953,9 @@
     const delta = nextScrollY - previous;
     if (Math.abs(delta) > 5) {
       dock?.classList.toggle('is-compact', delta > 0 && nextScrollY > 90);
+      if (!isPanelScroll) {
+        dock?.classList.toggle('is-out', delta > 0 && nextScrollY > 260);
+      }
     }
     if (isPanelScroll) lastPanelScrollY = nextScrollY;
     else lastScrollY = nextScrollY;
@@ -2006,8 +2010,9 @@
       document.documentElement.style.removeProperty('--cookie-banner-offset');
       return;
     }
-    const bottom = cookieBanner.getBoundingClientRect().bottom;
-    document.documentElement.style.setProperty('--cookie-banner-offset', `${Math.max(0, bottom + 16)}px`);
+    const { top } = cookieBanner.getBoundingClientRect();
+    const reserved = window.innerHeight - top + 16;
+    document.documentElement.style.setProperty('--cookie-banner-offset', `${Math.max(0, reserved)}px`);
   }
 
   function showCookieBanner() {
