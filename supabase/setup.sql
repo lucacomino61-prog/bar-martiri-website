@@ -255,6 +255,13 @@ create table if not exists public.site_settings (
   updated_at timestamptz not null default now()
 );
 
+-- The live database already had a public.site_settings table (opening hours,
+-- phone, address, Instagram) before the sunbed price was added, so the create
+-- above is a no-op there and the two columns have to be added explicitly --
+-- the same idiom as the umbrella columns on public.orders below.
+alter table public.site_settings add column if not exists sunbed_price integer;
+alter table public.site_settings add column if not exists sunbed_currency text not null default 'ALL';
+
 insert into public.site_settings (id) values ('main') on conflict (id) do nothing;
 
 alter table public.site_settings enable row level security;

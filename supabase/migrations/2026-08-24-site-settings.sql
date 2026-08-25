@@ -1,3 +1,12 @@
+-- SUPERSEDED by 2026-08-25-sunbed-price-columns.sql. Do not run this file.
+--
+-- public.site_settings already existed in the live database with a different
+-- shape (opening hours, phone, address, Instagram), so the create below is a
+-- no-op there and never added the sunbed columns -- which is why the site got a
+-- 400 on every load. The policy blocks would also rewrite policies on a table
+-- this repo does not own. Kept for the record; it is still correct for a fresh
+-- database, where setup.sql is what you would run anyway.
+--
 -- Run this once in the Supabase SQL editor (Dashboard -> SQL Editor -> New query).
 -- It is the same block that now lives in supabase/setup.sql, extracted so an
 -- existing database can be brought up to date without re-running the whole
