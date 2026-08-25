@@ -795,6 +795,13 @@
 
   async function loadGalleryImages() {
     if (!supabaseConfig.url || !supabaseConfig.publishableKey || !galleryGridEl) return;
+    const localGalleryImages = (() => {
+      try {
+        return JSON.parse(galleryGridEl.dataset.localGallery || '{}');
+      } catch {
+        return {};
+      }
+    })();
     try {
       const response = await fetch(
         `${supabaseConfig.url}/rest/v1/gallery_images?select=*&order=sort_order.asc`,
@@ -815,7 +822,12 @@
         const figure = document.createElement('figure');
         figure.className = 'gallery-item';
         const img = document.createElement('img');
-        img.src = row.image_url;
+        // Prefer the copy shipped with the build. Supabase Storage sends
+        // Cache-Control: no-cache, so every visit would otherwise revalidate
+        // against Supabase for every photo; the local copy is served from the
+        // CDN with a one-year immutable header. Photos added from /admin since
+        // the last deploy are not in the map and fall back to their Supabase URL.
+        img.src = localGalleryImages[row.image_url] || row.image_url;
         // These are the only photographs of the place on the site. An empty alt
         // keeps them out of image search entirely, so prefer a real caption from
         // the CMS and fall back to a truthful localized description.

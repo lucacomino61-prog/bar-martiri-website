@@ -298,6 +298,65 @@ async function fetchGalleryPhotos() {
 // "load delay" on Slow 4G -- almost all of it third-party connection setup,
 // against 6ms of actual download. Copy it into the build and serve it
 // same-origin instead.
+// Supabase Storage answers with `Cache-Control: no-cache`, so every visit
+// revalidates against Supabase for every gallery image and a cache miss costs
+// the full file. product-image-map.js already solves this for the 66 catalogue
+// images by shipping local copies and preferring them; the gallery never got the
+// same treatment. Copy them into the build too, as WebP, and hand the page a map
+// so the runtime prefers the local file. Images added from /admin after a deploy
+// simply fall back to the Supabase URL until the next build, exactly as products do.
+async function localizeGalleryPhotos(photos, targetRoot) {
+  if (!photos.length) return {};
+  const dir = resolve(targetRoot, 'assets/gallery');
+  await mkdir(dir, { recursive: true });
+  const map = {};
+  let saved = 0;
+  let sharp = null;
+  try {
+    ({ default: sharp } = await import('sharp'));
+  } catch {
+    // Without sharp the originals still get copied, just unconverted.
+  }
+  for (const photo of photos) {
+    if (!photo?.bytes) continue;
+    const base = photo.url.split('/').pop().replace(/\.[a-z]+$/i, '');
+    try {
+      let bytes = photo.bytes;
+      let name = photo.url.split('/').pop();
+      if (sharp) {
+        const webp = await sharp(photo.bytes).webp({ quality: 78 }).toBuffer();
+        if (webp.length < photo.bytes.length) {
+          bytes = webp;
+          name = `${base}.webp`;
+        }
+      }
+      await writeFile(resolve(dir, name), bytes);
+      map[photo.url] = `/assets/gallery/${name}`;
+      saved += photo.bytes.length - bytes.length;
+    } catch (error) {
+      console.warn(`Gallery photo ${base} not localized: ${error.message}`);
+    }
+  }
+  console.log(
+    `Gallery: ${Object.keys(map).length} photo(s) served from the build instead of Supabase` +
+      (saved > 0 ? `, ${Math.round(saved / 1024)}KB saved by WebP conversion.` : '.')
+  );
+  return map;
+}
+
+// The map rides on a data attribute rather than an inline script: the CSP is
+// script-src 'self', so injected inline script would be blocked.
+function injectGalleryMap(html, map) {
+  if (!Object.keys(map).length) return html;
+  const pattern = /<div class="gallery-grid" data-gallery-grid[^>]*>/;
+  if (!pattern.test(html)) throw new Error('Could not find the gallery grid container.');
+  const json = escapeHtml(JSON.stringify(map));
+  return html.replace(
+    pattern,
+    `<div class="gallery-grid" data-gallery-grid data-local-gallery="${json}">`
+  );
+}
+
 async function localizeHeroPhoto(photo, targetRoot) {
   if (!photo?.bytes) return null;
   const base = photo.url.split('/').pop().replace(/\.[a-z]+$/i, '');
@@ -580,6 +639,7 @@ const reviewSummary = await fetchReviewSummary();
 const siteSettings = await fetchSiteSettings();
 const galleryPhotos = await fetchGalleryPhotos();
 const heroPhotoPath = await localizeHeroPhoto(galleryPhotos[0], targetRoot);
+const galleryLocalMap = await localizeGalleryPhotos(galleryPhotos, targetRoot);
 console.log(
   galleryPhotos.length
     ? `Gallery: ${galleryPhotos.length} photos, hero uses the first by sort order.`
@@ -608,6 +668,7 @@ for (const language of LOCALES) {
   html = injectSunbedPrice(html, siteSettings, language);
   html = injectSunbedOffer(html, siteSettings);
   html = injectHeroPhoto(html, galleryPhotos, language, heroPhotoPath);
+  html = injectGalleryMap(html, galleryLocalMap);
   html = injectSocialImage(html, galleryPhotos);
   await writeFile(filePath, html);
 }
