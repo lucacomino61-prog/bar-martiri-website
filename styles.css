@@ -29,7 +29,7 @@
   --paper-strong: #fffdf8;
   --ink: #151515;
   --ink-soft: #69665f;
-  --ink-soft-on-mint: #3a372f;
+  --ink-soft-strong: #3a372f; /* muted ink that survives mint and glass backdrops */
   --line: #d5d0c6;
   --line-strong: #9f9a91;
   --white: #ffffff;
@@ -42,8 +42,10 @@
   --mint: #67bfa0;
   --sky: #79bde4;
   --lavender: #9b87ce;
-  --dock-bg: rgba(255, 253, 248, 0.76);
-  --dock-bg-strong: rgba(255, 253, 248, 0.92);
+  --dock-bg: rgba(255, 253, 248, 0.62);
+  --dock-bg-strong: rgba(255, 253, 248, 0.74);
+  --glass-rim: rgba(255, 255, 255, 0.88);
+  --glass-blur: blur(30px) saturate(1.9);
   --scrim: rgba(21, 21, 21, 0.38);
   --shadow-soft: rgba(21, 21, 21, 0.14);
   --shadow-strong: rgba(21, 21, 21, 0.24);
@@ -148,8 +150,8 @@ svg {
 }
 
 .site-header {
-  position: sticky;
-  z-index: 10;
+  position: fixed;
+  z-index: 60;
   top: 0;
   left: 0;
   display: flex;
@@ -169,10 +171,13 @@ svg {
 .site-header.is-compact {
   padding-top: 10px;
   padding-bottom: 10px;
+  border-bottom: 1px solid var(--glass-rim);
   background: var(--dock-bg-strong);
-  backdrop-filter: blur(18px) saturate(1.3);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  box-shadow: 0 6px 24px var(--shadow-soft);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow:
+    0 6px 24px var(--shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .site-header.is-compact .wordmark {
@@ -755,7 +760,7 @@ svg {
 }
 
 .visit-hours dt {
-  color: var(--ink-soft-on-mint);
+  color: var(--ink-soft-strong);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
@@ -1041,12 +1046,15 @@ svg {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 2px;
   padding: 7px;
-  border: 1px solid var(--white);
+  border: 1px solid var(--glass-rim);
   border-radius: 22px;
   background: var(--dock-bg);
-  box-shadow: 0 16px 46px var(--shadow-strong);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 16px 46px var(--shadow-strong),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   transform: translateX(-50%);
   transition:
     width 380ms var(--ease-out),
@@ -1073,7 +1081,7 @@ svg {
   padding: 0;
   border-radius: 15px;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--ink-soft-strong);
   cursor: pointer;
   transition:
     background-color 220ms var(--ease-standard),
