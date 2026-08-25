@@ -56,6 +56,7 @@
   --page-pad: clamp(20px, 4vw, 64px);
   --dock-height: 68px;
   --dock-compact-height: 54px;
+  --edge-height: 132px;
   --radius: 8px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
@@ -68,6 +69,15 @@
 html {
   color-scheme: light;
   scroll-behavior: smooth;
+  /* Every in-page anchor used to land underneath the fixed header, which is an
+     88px box (92px under 640px). Clearing the whole edge band rather than just
+     the header is deliberate: anything the browser scrolls into view -- an
+     anchor, or a control Tab reaches off-screen -- has to land on crisp
+     content, not parked 40px inside the effect. */
+  scroll-padding-top: calc(var(--edge-height) + 8px);
+  /* mirror image: the fixed dock owns the bottom ~82px, so a control tabbed
+     into view from below would park behind it */
+  scroll-padding-bottom: calc(var(--dock-height) + 34px);
   overflow-x: clip;
   overscroll-behavior-y: contain;
 }
@@ -156,33 +166,321 @@ svg {
   left: 0;
   display: flex;
   width: 100%;
-  align-items: flex-start;
   justify-content: space-between;
-  padding: 24px var(--page-pad);
+  padding: 14px var(--page-pad);
+  /* Load-bearing: this is a full-viewport-width strip, so every interactive
+     descendant has to opt back in with pointer-events: auto (.wordmark,
+     .header-tools, .privacy-back). Forgetting that is why the privacy pages'
+     back link was dead for so long. */
   pointer-events: none;
-  transition:
-    transform 260ms var(--ease-out),
-    opacity 260ms var(--ease-out);
+  /* translateZ keeps Safari re-sampling the backdrop of the glass inside: a
+     backdrop-filter under position: fixed otherwise freezes at the scroll
+     position it was first painted at. transform is not a backdrop root, so it
+     costs the glass nothing. Never add opacity here -- opacity below 1 IS a
+     backdrop root, and it would erase the capsule's glass silently. */
+  transform: translateZ(0);
 }
 
 /* Stays visible at every scroll position -- it carries the language switcher,
-   which a visitor deep in the page still needs. It shrinks rather than hides so
-   it does not cost a fixed slice of a phone screen. */
-.site-header.is-compact {
-  padding-top: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--glass-rim);
-  background: var(--dock-bg-strong);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow:
-    0 6px 24px var(--shadow-soft),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+   which a visitor deep in the page still needs. Nothing about it moves on
+   scroll: the bar gains material in place, and the scroll edge below it does
+   the work the old shrink used to do. Animating its padding cost two
+   simultaneous layout passes per frame on the busiest gesture on the page. */
+
+/* The bar carries no material until there is content underneath it: at scroll 0
+   nothing needs separating, so nothing is drawn. Once the page slides under it
+   gathers into a glass capsule -- deliberately the same rim, radius and blur as
+   .bottom-dock, matching the dock's *compact* background (--dock-bg-strong, not
+   its resting --dock-bg), so the site reads as one glass rather than two. Those
+   values are duplicated from .bottom-dock rather than shared; if you retune the
+   dock's surface, retune this with it.
+
+   NOTE: .site-header is also used by privacy.html, which has NO .header-bar --
+   its two links are direct children. Anything added here that the header rules
+   depend on has to keep working for that shape too. */
+.header-bar {
+  display: flex;
+  width: min(var(--content), 100%);
+  margin-inline: auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 7px 7px 18px;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  pointer-events: none;
+  /* Paint-only. Nothing here changes the box, so no frame in the transition
+     costs a layout pass. */
+  transition:
+    border-color 300ms var(--ease-out),
+    background-color 300ms var(--ease-out),
+    box-shadow 300ms var(--ease-out);
 }
 
-.site-header.is-compact .wordmark {
-  font-size: 13px;
+.site-header.is-compact .header-bar {
+  border-color: var(--glass-rim);
+  background: var(--dock-bg-strong);
+  box-shadow:
+    0 16px 46px var(--shadow-strong),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  pointer-events: auto;
 }
+
+/* Glass is a light surface. The muted ink that reads on paper falls to about
+   2.4:1 once the capsule sits over the black weather band, so the compact bar
+   borrows the dock's stronger token. */
+.site-header.is-compact .place-mark {
+  color: var(--ink-soft-strong);
+}
+
+/* Apple's scroll edge effect. A single masked backdrop-filter does not ramp --
+   the mask is applied AFTER the filter, so at half alpha you get the unblurred
+   image cross-faded with a fully blurred one, which reads as a ghost rather
+   than as softness. Four layers whose radius doubles (2.8 / 5.6 / 11.2 / 22.4)
+   quantise the ramp instead: each mask passes a 25% plateau with a 12.5% feather
+   either side, so neighbouring layers overlap and no seam is visible. Blur grows
+   upward, toward the bar. Layer 1 runs opaque to the top edge with no feather --
+   that is deliberate, maximum blur belongs at the very first pixel.
+
+   Never write the radii as blur(var(--x)). Safari silently DROPS var() inside
+   -webkit-backdrop-filter, so the whole effect renders as tint-only on every
+   iPhone while getComputedStyle still reports the resolved value. The literals
+   are the fix, not an oversight.
+
+   Never fade this in with opacity either: an ancestor below opacity 1 starts a
+   new backdrop root, leaving every layer with nothing to sample. Each layer is
+   also its own GPU render pass whose input is the previous layer's output, so
+   the count is a real per-frame cost -- do not add layers without measuring. */
+.scroll-edge {
+  position: fixed;
+  z-index: 59;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Driven straight off scroll position by script.js, with no transition: Apple's
+     edge tracks the finger continuously rather than snapping at a threshold, and
+     transitioning the height would reallocate all six blur surfaces on every one
+     of the ~25 frames. At progress 0 the box is zero-tall, which is what actually
+     makes the layers free at rest -- so whatever replaces this must never give
+     the container a non-zero parked height. */
+  height: calc(var(--edge-progress, 0) * var(--edge-height));
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+/* An open dock panel is its own surface -- it carries its own title, close
+   button and language switcher -- so neither the bar nor the edge belongs on top
+   of it. The header paints ABOVE every panel (z 60 vs 40) and was previously
+   held back only by the inert attribute, which stops clicks but still paints:
+   the capsule landed squarely on the panel's title row and close button.
+
+   visibility, not opacity: opacity below 1 would make .site-header a backdrop
+   root and silently erase the capsule's glass on the way back in. */
+body:has(.dock-panel.is-open) .site-header,
+body:has(.dock-panel.is-open) .scroll-edge {
+  visibility: hidden;
+}
+
+body:has(.dock-panel.is-open) .scroll-edge {
+  display: none;
+}
+
+/* Without this the spans are empty INLINE elements with a zero-area box, and
+   every backdrop-filter below paints nothing at all -- the effect silently
+   degrades to the tint on its own. */
+.scroll-edge span {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.scroll-edge span:nth-child(1) {
+  backdrop-filter: blur(22.4px);
+  -webkit-backdrop-filter: blur(22.4px);
+  mask-image: linear-gradient(
+    to top,
+    transparent 62.5%,
+    #000 75%,
+    #000 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 62.5%,
+    #000 75%,
+    #000 100%
+  );
+}
+
+.scroll-edge span:nth-child(2) {
+  backdrop-filter: blur(11.2px);
+  -webkit-backdrop-filter: blur(11.2px);
+  mask-image: linear-gradient(
+    to top,
+    transparent 37.5%,
+    #000 50%,
+    #000 75%,
+    transparent 87.5%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 37.5%,
+    #000 50%,
+    #000 75%,
+    transparent 87.5%
+  );
+}
+
+.scroll-edge span:nth-child(3) {
+  backdrop-filter: blur(5.6px);
+  -webkit-backdrop-filter: blur(5.6px);
+  mask-image: linear-gradient(
+    to top,
+    transparent 12.5%,
+    #000 25%,
+    #000 50%,
+    transparent 62.5%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 12.5%,
+    #000 25%,
+    #000 50%,
+    transparent 62.5%
+  );
+}
+
+.scroll-edge span:nth-child(4) {
+  backdrop-filter: blur(2.8px);
+  -webkit-backdrop-filter: blur(2.8px);
+  mask-image: linear-gradient(
+    to top,
+    transparent 0%,
+    #000 12.5%,
+    #000 25%,
+    transparent 37.5%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 0%,
+    #000 12.5%,
+    #000 25%,
+    transparent 37.5%
+  );
+}
+
+/* The wash: the half of the effect that blur cannot do. Apple's is adaptive --
+   over light content it fades toward white, and over dark content it explicitly
+   does NOT lighten, it dims, so a black band never hazes to grey. CSS cannot
+   read what is behind a fixed element, so the page's one dark section drives it
+   from script.js. z-index keeps both veils above the blur layers; if they sat
+   below, the layers would sample and blur the veil itself. */
+.scroll-edge::before,
+.scroll-edge::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: '';
+  transition: opacity 320ms var(--ease-out);
+}
+
+/* Both washes clear by 45% of the band, which is just below the capsule. The
+   wash exists to keep the BAR legible over moving content; carried further down
+   it tints ordinary page text instead, and --ink-soft on --paper is only 5.04:1
+   to begin with, so even a 15% veil pushes body copy under 4.5:1. Below the
+   capsule, blur alone does the work. */
+.scroll-edge::before {
+  background: linear-gradient(
+    to top,
+    transparent 45%,
+    color-mix(in srgb, var(--paper-strong) 34%, transparent) 100%
+  );
+}
+
+.scroll-edge::after {
+  background: linear-gradient(to top, transparent 45%, rgba(21, 21, 21, 0.25) 100%);
+  opacity: 0;
+}
+
+:root.is-over-dark .scroll-edge::before {
+  opacity: 0;
+}
+
+:root.is-over-dark .scroll-edge::after {
+  opacity: 1;
+}
+
+/* One rule for all three no-glass cases: the edge IS the effect, so when the
+   effect cannot render or should not render, drop it whole and let the capsule
+   go opaque. Trying to keep a "less translucent" version of a translucency
+   effect only produces three subtly different half-measures.
+
+   The reduced-transparency query is written as a REMOVAL, never as
+   "(no-preference) { add blur }": Safari does not support the feature at all,
+   and an unrecognised feature makes the whole query fail to match -- which
+   would strip the effect from exactly the users who asked for it. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .scroll-edge {
+    display: none;
+  }
+
+  .site-header.is-compact .header-bar {
+    background: var(--paper-strong);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .scroll-edge {
+    display: none;
+  }
+
+  .site-header.is-compact .header-bar {
+    background: var(--paper-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .panel-header {
+    background: var(--paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .panel-header::after,
+  .menu-controls::after {
+    display: none;
+  }
+
+  .menu-controls {
+    background: var(--paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (forced-colors: active) {
+  .scroll-edge {
+    display: none;
+  }
+
+  /* background-image is forced to none here, so the gradient separators simply
+     disappear. Put the rules back rather than leaving the sticky chrome with no
+     boundary at all. forced-colors does not imply reduced-transparency. */
+  .panel-header::after,
+  .menu-controls::after {
+    display: none;
+  }
+
+  .panel-header,
+  .menu-controls {
+    border-bottom: 1px solid CanvasText;
+  }
+}
+
 
 .header-tools {
   display: flex;
@@ -1176,6 +1474,11 @@ svg {
 .dock-panel {
   position: absolute;
   inset: 0;
+  /* The panel -- not html -- is the scroller for panel content, and it is the
+     one carrying sticky chrome, so it needs its own padding or a control
+     reached by Tab lands behind the header. */
+  scroll-padding-top: 140px;
+  scroll-padding-bottom: calc(var(--dock-height) + 34px);
   width: 100%;
   height: 100%;
   overflow-x: hidden;
@@ -1185,7 +1488,9 @@ svg {
   overscroll-behavior: contain;
   scroll-behavior: smooth;
   opacity: 0;
-  transform: translateY(18px);
+  /* Scale as well as rise: a surface that grows into place reads as arriving,
+     where a pure slide reads as a slide. Enter and exit share this path. */
+  transform: translateY(18px) scale(0.985);
   transition:
     opacity 260ms var(--ease-standard),
     transform 360ms var(--ease-out);
@@ -1193,7 +1498,7 @@ svg {
 
 .dock-panel.is-open {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .panel-header {
@@ -1208,13 +1513,31 @@ svg {
   justify-content: space-between;
   gap: 24px;
   padding: 24px 0 20px;
-  border-bottom: 1px solid var(--line);
   background: rgba(244, 240, 232, 0.94);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition:
     min-height 240ms var(--ease-out),
     padding 240ms var(--ease-out);
+}
+
+/* A hard 1px rule under floating chrome reads as a seam. Same idea as the site
+   header's scroll edge, at panel scale: content dissolves into the header
+   instead of being cut by a line. At scroll 0 it is paper fading into paper, so
+   it costs nothing and needs no scroll listener to manage it. */
+.panel-header::after {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 22px;
+  background: linear-gradient(
+    to bottom,
+    rgba(244, 240, 232, 0.94),
+    rgba(244, 240, 232, 0)
+  );
+  content: '';
+  pointer-events: none;
 }
 
 .panel-header h2 {
@@ -1249,7 +1572,8 @@ svg {
   cursor: pointer;
   transition:
     border-color 180ms var(--ease-standard),
-    background-color 180ms var(--ease-standard);
+    background-color 180ms var(--ease-standard),
+    transform 140ms var(--ease-standard);
 }
 
 .icon-button svg {
@@ -1389,18 +1713,45 @@ svg {
   line-height: 1.02;
 }
 
+/* The menu is the one panel that stacks a SECOND sticky layer under its
+   header, so the soft edge belongs at the bottom of this one -- put it on the
+   header and it lands between the two layers, where there is no content to
+   soften. */
 .menu-controls {
   position: sticky;
   z-index: 4;
   top: 111px;
   padding: 14px 0 12px;
-  border-bottom: 1px solid var(--line);
   background: rgba(244, 240, 232, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition:
     top 240ms var(--ease-out),
     padding 240ms var(--ease-out);
+}
+
+.dock-panel--menu .panel-header::after {
+  display: none;
+}
+
+/* The menu stacks a second sticky layer, so its obscured band is taller. */
+.dock-panel--menu {
+  scroll-padding-top: 205px;
+}
+
+.menu-controls::after {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 22px;
+  background: linear-gradient(
+    to bottom,
+    rgba(244, 240, 232, 0.95),
+    rgba(244, 240, 232, 0)
+  );
+  content: '';
+  pointer-events: none;
 }
 
 .menu-toolbar {
@@ -2285,6 +2636,161 @@ body:has(.dock-panel.is-open) .cookie-banner {
   color: var(--ink);
 }
 
+/* ---------------------------------------------------------------------------
+   Motion. Two rules govern everything below.
+
+   1. Feedback lands on pointer-DOWN, not on release. :active fires the moment
+      the finger touches, and on a touch device that is the only press
+      confirmation there is -- there is no hover to lean on.
+
+   2. Entrances animate; re-renders do not. Every entrance here is a one-shot
+      keyframe on a freshly created node, which is why renderBasket now keys its
+      rows instead of calling replaceChildren. Without that, tapping + would
+      replay the entrance for the whole list. The animation and the
+      reconciliation are one change, not two.
+
+   The global prefers-reduced-motion block near the end of this file clamps every
+   duration here to 0.01ms, so these degrade to instant rather than to broken.
+   --------------------------------------------------------------------------- */
+
+/* .icon-button is NOT in this group: it already declares a transition, and
+   transition is a shorthand -- listing it here would reset its property list to
+   transform alone and kill its border/background hover fade. Its transform is
+   folded into its own declaration instead. */
+.chat-composer-send,
+.primary-button,
+.primary-link,
+.cookie-button,
+.language-toggle {
+  transition: transform 140ms var(--ease-standard);
+}
+
+.icon-button:active,
+.chat-composer-send:active,
+.primary-button:active,
+.primary-link:active,
+.cookie-button:active,
+.language-toggle:active {
+  transform: scale(0.97);
+}
+
+/* The dock is the entire navigation and gets tapped constantly, so the glass
+   surface itself must not move -- only the icon dips, and barely. Anything more
+   legible than this reads as lag on a control used dozens of times a day. */
+.dock-action svg {
+  transition: transform 120ms var(--ease-standard);
+}
+
+.dock-action:active svg {
+  transform: scale(0.92);
+}
+
+/* The tap happens in the menu panel; the count lives on the dock at the other
+   end of the screen. Without this, the only evidence the tap registered is a
+   digit silently changing in a corner the thumb is nowhere near. */
+.dock-badge {
+  animation: badge-in 220ms var(--ease-out) both;
+}
+
+.dock-badge.is-bumped {
+  animation: badge-bump 260ms var(--ease-out);
+}
+
+@keyframes badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes badge-bump {
+  0% {
+    transform: scale(1);
+  }
+
+  38% {
+    transform: scale(1.28);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Opt-in, and cleared once it has played. A bare .basket-row rule would replay
+   for every row each time the basket panel is shown, because display: none
+   cancels a running animation and starts it fresh on redisplay -- which is the
+   exact thing the keyed reconciler exists to prevent. */
+.basket-row.is-entering {
+  animation: row-in 260ms var(--ease-out) both;
+}
+
+/* Leaves the way it arrived, and collapses its own height so the rows below
+   glide up instead of snapping. script.js pins the pixel height before adding
+   this class -- height: auto is not interpolable. */
+.basket-row.is-leaving {
+  overflow: hidden;
+  pointer-events: none;
+  animation: row-out 220ms var(--ease-standard) both;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+
+@keyframes row-out {
+  40% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  100% {
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-width: 0;
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+/* Bubbles grow from the corner they belong to, so the message reads as coming
+   from its sender rather than from nowhere. */
+.chat-message-bubble--customer {
+  transform-origin: bottom right;
+}
+
+.chat-message-bubble--admin {
+  transform-origin: bottom left;
+}
+
+.chat-message-bubble.is-new {
+  animation: bubble-in 240ms var(--ease-out) both;
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+}
+
+/* The one genuinely high-emotion moment in the app, and the only place a longer
+   beat is earned. */
+.basket-status {
+  animation: status-in 320ms var(--ease-out) both;
+}
+
+@keyframes status-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
 @keyframes marquee {
   to {
     transform: translateX(-50%);
@@ -2338,8 +2844,16 @@ body:has(.dock-panel.is-open) .cookie-banner {
 }
 
 @media (max-width: 640px) {
+  :root {
+    --edge-height: 112px;
+  }
+
   .site-header {
     padding-top: 18px;
+  }
+
+  .site-header.is-compact .header-bar {
+    padding-left: 14px;
   }
 
   .place-mark {
@@ -2697,10 +3211,15 @@ body:has(.dock-panel.is-open) .cookie-banner {
   background: var(--paper);
 }
 
+/* pointer-events is not cosmetic here: .site-header is pointer-events: none, so
+   without this the "back to home" link on all three privacy pages is unclickable.
+   Pre-existing bug, unrelated to the header capsule -- called out because it was
+   fixed in the same pass. */
 .privacy-back {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
+  pointer-events: auto;
   color: var(--ink);
   font-size: 12px;
   font-weight: 800;

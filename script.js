@@ -666,15 +666,30 @@
     };
   }
 
+  // Tracks how much of the thread has already been shown, so a poll that
+  // re-renders the whole conversation animates only what actually arrived.
+  // Opening the panel on an existing thread animates nothing.
+  let renderedChatCount = 0;
+  let chatRendered = false;
+
   function renderChatMessages(messages) {
     if (!chatMessagesEl) return;
+    // chatRendered, not a count: a brand new conversation renders its first
+    // message from zero, and treating that as "nothing rendered yet" meant the
+    // very first message a customer sent never animated.
+    const firstFresh = chatRendered ? renderedChatCount : messages.length;
     chatMessagesEl.replaceChildren();
-    messages.forEach((message) => {
+    messages.forEach((message, index) => {
       const bubble = document.createElement('p');
       bubble.className = `chat-message-bubble chat-message-bubble--${message.sender}`;
+      if (index >= firstFresh) bubble.classList.add('is-new');
       bubble.textContent = message.body;
       chatMessagesEl.append(bubble);
     });
+    // Monotonic: a thread that shrinks (a deletion, or a short poll response)
+    // must not make already-seen bubbles animate again when it regrows.
+    renderedChatCount = Math.max(renderedChatCount, messages.length);
+    chatRendered = true;
     if (chatEmptyEl) chatEmptyEl.hidden = messages.length > 0;
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
   }
@@ -900,11 +915,35 @@
     return cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   }
 
+  // Pops only when the count GROWS. Re-rendering the basket, decrementing, or
+  // restoring a saved cart on load must not fire it -- a confirmation that
+  // appears when you did not add anything is worse than none.
+  let lastCartCount = null;
+
   function updateBasketBadge() {
     const count = cartCount();
+    const previous = lastCartCount;
+    lastCartCount = count;
+    // First time the badge is shown at all, un-hiding it replays badge-in by
+    // itself, so there is nothing to do but stay out of the way.
+    const appearing = previous === null || previous === 0;
+    const grew = previous !== null && count > previous;
     basketCountEls.forEach((element) => {
       element.textContent = String(count);
       element.hidden = count === 0;
+      if (count === 0 || appearing) {
+        // is-bumped overrides animation-name, which would suppress badge-in.
+        element.classList.remove('is-bumped');
+        return;
+      }
+      if (!grew) return;
+      // Deliberately NOT cleared on animationend: clearing it switches
+      // animation-name back to badge-in, which restarts it, and the badge
+      // pops and then scales in a second time. Leaving it set is inert --
+      // a finished animation does not replay until the name changes again.
+      element.classList.remove('is-bumped');
+      void element.offsetWidth;
+      element.classList.add('is-bumped');
     });
   }
 
@@ -928,16 +967,20 @@
     renderBasket();
   }
 
+  // Row elements now outlive a render, so they are keyed by product id and
+  // updated in place. Rebuilding them on every tap would replay the entrance
+  // animation for the whole list, and would throw away the DOM for nothing.
+  const basketRows = new Map();
+
   function createBasketRow(item) {
     const row = document.createElement('article');
     row.className = 'basket-row';
+    row.dataset.basketRow = String(item.id);
 
     const info = document.createElement('div');
     info.className = 'basket-row-info';
     const name = document.createElement('p');
-    name.textContent = capitalizeWords(item.name);
     const price = document.createElement('span');
-    price.textContent = formatPrice(item.price);
     info.append(name, price);
 
     const controls = document.createElement('div');
@@ -945,25 +988,115 @@
     const minus = document.createElement('button');
     minus.type = 'button';
     minus.textContent = '−';
-    minus.setAttribute('aria-label', `${dynamicText('removeFromBasket')} ${capitalizeWords(item.name)}`);
-    minus.addEventListener('click', () => setCartQty(item.id, item.qty - 1));
     const qty = document.createElement('span');
     qty.className = 'basket-row-qty';
-    qty.textContent = String(item.qty);
     const plus = document.createElement('button');
     plus.type = 'button';
     plus.textContent = '+';
-    plus.setAttribute('aria-label', `${dynamicText('addToBasket')} ${capitalizeWords(item.name)}`);
-    plus.addEventListener('click', () => setCartQty(item.id, item.qty + 1));
+    // Look the entry up at click time instead of closing over it: the row now
+    // survives re-renders, and a cart restored from storage is a different
+    // object with the same id.
+    const step = (delta) => {
+      const entry = cart.find((candidate) => candidate.id === item.id);
+      if (entry) setCartQty(entry.id, entry.qty + delta);
+    };
+    minus.addEventListener('click', () => step(-1));
+    plus.addEventListener('click', () => step(1));
     controls.append(minus, qty, plus);
 
     row.append(info, controls);
-    return row;
+
+    const sync = (next) => {
+      const label = capitalizeWords(next.name);
+      name.textContent = label;
+      price.textContent = formatPrice(next.price);
+      qty.textContent = String(next.qty);
+      minus.setAttribute('aria-label', `${dynamicText('removeFromBasket')} ${label}`);
+      plus.setAttribute('aria-label', `${dynamicText('addToBasket')} ${label}`);
+    };
+    sync(item);
+    return { row, sync };
+  }
+
+  // Collapses its own height on the way out so the rows below glide up rather
+  // than snapping. height: auto cannot be interpolated, so pin the pixel value
+  // first. The timeout is the safety net for a missed animationend (a
+  // background tab never fires one).
+  function dismissBasketRow(row) {
+    // offsetHeight, not isConnected: a row inside a hidden panel is still
+    // connected but has no box, cannot run an animation, and would otherwise be
+    // pinned to height 0 and linger for the full timeout.
+    const height = row.isConnected ? row.offsetHeight : 0;
+    if (!height) {
+      row.remove();
+      settleBasketChrome();
+      return;
+    }
+    row.style.height = `${height}px`;
+    row.classList.add('is-leaving');
+    const drop = () => {
+      row.remove();
+      settleBasketChrome();
+    };
+    row.addEventListener('animationend', drop, { once: true });
+    setTimeout(drop, 600);
+  }
+
+  // The empty state must not appear while the last row is still leaving, and
+  // the list must stay displayed until it has gone.
+  function settleBasketChrome() {
+    // While an order is pending the status screen owns this panel. A leave
+    // timer that fires after checkout must not re-show the list on top of it.
+    if (pendingOrderId) return;
+    const hasRows = basketItemsEl ? basketItemsEl.children.length > 0 : false;
+    const hasItems = cart.length > 0;
+    if (basketItemsEl) basketItemsEl.hidden = !hasItems && !hasRows;
+    if (basketEmptyEl) basketEmptyEl.hidden = hasItems || hasRows;
+    if (basketSummaryEl) basketSummaryEl.hidden = !hasItems;
+  }
+
+  function syncBasketRows() {
+    if (!basketItemsEl) return;
+    const seen = new Set();
+    cart.forEach((item) => {
+      const key = String(item.id);
+      seen.add(key);
+      const existing = basketRows.get(key);
+      if (existing) {
+        existing.sync(item);
+        return;
+      }
+      const created = createBasketRow(item);
+      // A row still playing its leave animation would otherwise leave a twin
+      // with the same key, which settleBasketChrome counts as a live row.
+      basketItemsEl.querySelector(`[data-basket-row="${CSS.escape(key)}"]`)?.remove();
+      basketRows.set(key, created);
+      created.row.classList.add('is-entering');
+      created.row.addEventListener(
+        'animationend',
+        () => created.row.classList.remove('is-entering'),
+        { once: true }
+      );
+      // Appending is correct ordering here: addToCart always pushes to the end
+      // and nothing reorders the cart. Moving an existing node would restart
+      // its entrance animation.
+      basketItemsEl.append(created.row);
+    });
+    basketRows.forEach((entry, key) => {
+      if (seen.has(key)) return;
+      basketRows.delete(key);
+      dismissBasketRow(entry.row);
+    });
   }
 
   function renderBasket() {
     updateBasketBadge();
     if (pendingOrderId) {
+      // Drop the rows outright rather than animating them: they are off screen
+      // behind the status panel, so a leave animation would only leave the
+      // reconciler and the DOM disagreeing about what is still there.
+      basketRows.clear();
+      if (basketItemsEl) basketItemsEl.replaceChildren();
       if (basketItemsEl) basketItemsEl.hidden = true;
       if (basketEmptyEl) basketEmptyEl.hidden = true;
       if (basketSummaryEl) basketSummaryEl.hidden = true;
@@ -972,12 +1105,8 @@
     }
     if (basketStatusEl) basketStatusEl.hidden = true;
     if (!basketItemsEl) return;
-    const hasItems = cart.length > 0;
-    basketItemsEl.hidden = !hasItems;
-    basketItemsEl.replaceChildren();
-    cart.forEach((item) => basketItemsEl.append(createBasketRow(item)));
-    if (basketEmptyEl) basketEmptyEl.hidden = hasItems;
-    if (basketSummaryEl) basketSummaryEl.hidden = !hasItems;
+    syncBasketRows();
+    settleBasketChrome();
     if (basketTotalEl) basketTotalEl.textContent = formatPrice(cartTotal()) || '0 ALL';
   }
 
@@ -2261,20 +2390,84 @@
     }
   });
 
+  // The scroll edge effect washes content toward white as it slides under the
+  // bar -- but over a dark backdrop that would haze black to grey, so it dims
+  // instead. CSS cannot see what is behind a fixed element, so the elements
+  // marked data-dark-surface tell it. Mark any new dark-on-light section the
+  // same way; missing one puts a white veil over black, which is the exact
+  // failure this exists to prevent.
+  const darkSurfaces = [...document.querySelectorAll('[data-dark-surface]')];
+  const narrowViewport = window.matchMedia('(max-width: 640px)');
+  // Mirrors --edge-height in styles.css; readEdgeHeight() below is the real
+  // source and runs immediately, so this only shows if that read ever fails.
+  let edgeHeight = 132;
+  let edgeProgress = -1;
+
+  // The header latches on above ON and off below OFF. A single threshold makes a
+  // reader parked exactly on it re-trigger the capsule's transition every frame.
+  const HEADER_COMPACT_ON = 90;
+  const HEADER_COMPACT_OFF = 70;
+  const EDGE_RAMP_START = 8;
+  const EDGE_RAMP_LENGTH = 112;
+
+  // Keyed off the breakpoint, not resize: Chrome on Android fires resize every
+  // time the URL bar collapses, which happens mid-scroll -- and reading a custom
+  // property flushes style. The token only changes at one breakpoint.
+  function readEdgeHeight() {
+    const parsed = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--edge-height')
+    );
+    if (Number.isFinite(parsed)) edgeHeight = parsed;
+  }
+
+  readEdgeHeight();
+  narrowViewport.addEventListener('change', readEdgeHeight);
+
   function updateDockForScroll(nextScrollY, isPanelScroll = false) {
     const previous = isPanelScroll ? lastPanelScrollY : lastScrollY;
     const delta = nextScrollY - previous;
+    // Everything below writes a class or a custom property, so this rect read
+    // has to stay FIRST: moving it after a write forces a synchronous style
+    // recalc and layout on every scroll frame. Panel scrolls are exempt because
+    // an open panel hides the edge outright (body:has(.dock-panel.is-open)), so
+    // a stale is-over-dark cannot be seen.
+    if (!isPanelScroll) {
+      const overDark = darkSurfaces.some((surface) => {
+        const box = surface.getBoundingClientRect();
+        return box.top < edgeHeight && box.bottom > 0;
+      });
+      document.documentElement.classList.toggle('is-over-dark', overDark);
+
+      // The edge ramps with the scroll itself rather than snapping at a
+      // threshold, which is what Apple's does. Quantised to 1/50 so a slow drag
+      // does not resize four GPU blur surfaces on every single frame.
+      const progress =
+        Math.round(
+          Math.min(Math.max((nextScrollY - EDGE_RAMP_START) / EDGE_RAMP_LENGTH, 0), 1) * 50
+        ) / 50;
+      if (progress !== edgeProgress) {
+        edgeProgress = progress;
+        document.documentElement.style.setProperty('--edge-progress', String(progress));
+      }
+    }
     // Both bars stay put at every scroll position: the dock is the only
     // navigation and the header holds the language switcher, so neither may
     // disappear. The header shrinks instead, which keeps it reachable without
     // costing a fixed slice of a phone screen.
-    if (!isPanelScroll) siteHeader?.classList.toggle('is-compact', nextScrollY > 90);
+    if (!isPanelScroll && siteHeader) {
+      if (nextScrollY > HEADER_COMPACT_ON) siteHeader.classList.add('is-compact');
+      else if (nextScrollY < HEADER_COMPACT_OFF) siteHeader.classList.remove('is-compact');
+    }
     if (Math.abs(delta) > 5) {
-      dock?.classList.toggle('is-compact', delta > 0 && nextScrollY > 90);
+      dock?.classList.toggle('is-compact', delta > 0 && nextScrollY > HEADER_COMPACT_ON);
     }
     if (isPanelScroll) lastPanelScrollY = nextScrollY;
     else lastScrollY = nextScrollY;
   }
+
+  // A restored scroll position does not always fire a scroll event before first
+  // paint, which would leave the bar bare halfway down the page.
+  updateDockForScroll(window.scrollY);
 
   window.addEventListener(
     'scroll',
