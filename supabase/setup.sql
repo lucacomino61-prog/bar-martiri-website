@@ -257,6 +257,22 @@ create table if not exists public.site_settings (
 
 insert into public.site_settings (id) values ('main') on conflict (id) do nothing;
 
+-- "create table if not exists" above silently skips an EXISTING table, so a
+-- database that had site_settings before these two columns were added never
+-- received them. That is not theoretical: the live database answers
+--   {"code":"42703","message":"column site_settings.sunbed_price does not exist"}
+-- which makes both the build-time injection and the runtime fetch fail, and the
+-- sunbed price has therefore never rendered on the site at all.
+alter table public.site_settings add column if not exists sunbed_price integer;
+alter table public.site_settings
+  add column if not exists sunbed_currency text not null default 'ALL';
+
+-- Seeds the published rate without overwriting one set later from /admin, which
+-- stays the source of truth.
+update public.site_settings
+set sunbed_price = 700
+where id = 'main' and sunbed_price is null;
+
 alter table public.site_settings enable row level security;
 
 drop policy if exists "Public can read site settings" on public.site_settings;

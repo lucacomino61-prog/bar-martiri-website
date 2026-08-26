@@ -2959,7 +2959,6 @@
     document.body.classList.add('is-panel-open');
     document.getElementById('main')?.setAttribute('inert', '');
     document.querySelector('.site-header')?.setAttribute('inert', '');
-    dock?.classList.remove('is-compact');
     setDockActive(name);
 
     if (name === 'menu') {
@@ -3114,8 +3113,6 @@
   narrowViewport.addEventListener('change', readEdgeHeight);
 
   function updateDockForScroll(nextScrollY, isPanelScroll = false) {
-    const previous = isPanelScroll ? lastPanelScrollY : lastScrollY;
-    const delta = nextScrollY - previous;
     // Everything below writes a class or a custom property, so this rect read
     // has to stay FIRST: moving it after a write forces a synchronous style
     // recalc and layout on every scroll frame. Panel scrolls are exempt because
@@ -3147,9 +3144,6 @@
     if (!isPanelScroll && siteHeader) {
       if (nextScrollY > HEADER_COMPACT_ON) siteHeader.classList.add('is-compact');
       else if (nextScrollY < HEADER_COMPACT_OFF) siteHeader.classList.remove('is-compact');
-    }
-    if (Math.abs(delta) > 5) {
-      dock?.classList.toggle('is-compact', delta > 0 && nextScrollY > HEADER_COMPACT_ON);
     }
     if (isPanelScroll) lastPanelScrollY = nextScrollY;
     else lastScrollY = nextScrollY;

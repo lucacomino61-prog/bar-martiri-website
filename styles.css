@@ -54,8 +54,12 @@
 
   --content: 1240px;
   --page-pad: clamp(20px, 4vw, 64px);
-  --dock-height: 68px;
-  --dock-compact-height: 54px;
+  /* 60, not 68: 7px of padding and a 1px border on each side, so the action
+     row lands on exactly 44px -- the smallest a tap target should be. Measured,
+     not assumed: 58px looked right on paper and rendered a 42px target because
+     the border is easy to forget. The dock no longer shrinks on scroll, so this
+     is the only height it ever has. */
+  --dock-height: 60px;
   --edge-height: 132px;
   --radius: 8px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -1382,7 +1386,7 @@ body:has(.dock-panel.is-open) .scroll-edge {
   padding: 7px;
   border: 1px solid var(--glass-rim);
   border-radius: 22px;
-  background: var(--dock-bg);
+  background: var(--dock-bg-strong);
   box-shadow:
     0 16px 46px var(--shadow-strong),
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
@@ -1397,18 +1401,10 @@ body:has(.dock-panel.is-open) .scroll-edge {
   /* width is deliberately absent: it is content-driven now, so it follows the
      selected pill's own expansion. Transitioning it too would animate the same
      change twice, at two different speeds. */
-  transition:
-    height 380ms var(--ease-out),
-    border-radius 380ms var(--ease-out),
-    background-color 380ms var(--ease-out),
-    opacity 260ms var(--ease-out);
+  transition: opacity 260ms var(--ease-out);
 }
 
-.bottom-dock.is-compact {
-  height: var(--dock-compact-height);
-  border-radius: 18px;
-  background: var(--dock-bg-strong);
-}
+
 
 /* Mail's category row: the selected item carries its label inline and every
    other one collapses to its icon. The label track is minmax(0, 0fr) when
@@ -3919,7 +3915,10 @@ html.is-gated body {
 
 .faq-section {
   display: grid;
-  width: min(100%, var(--content));
+  /* Narrower than the page measure. Questions and answers are read line by
+     line, and across the full 1240px the answer column ran past a comfortable
+     measure while the heading floated alone on the left. */
+  width: min(100%, 940px);
   margin: 0 auto;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   gap: clamp(28px, 6vw, 96px);
@@ -4002,7 +4001,7 @@ html.is-gated body {
 }
 
 .faq-item p {
-  max-width: 62ch;
+  max-width: 54ch;
   margin: 0;
   padding: 0 0 22px;
   color: var(--ink-soft-strong);
