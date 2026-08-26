@@ -3181,34 +3181,49 @@ body:has(.dock-panel.is-open) .cookie-banner {
     min-height: 320px;
   }
 
+  /* This is a postal address, not a headline. At 9vw it ran to four lines of
+     35px display type. */
   .location-copy h3 {
-    font-size: clamp(30px, 9vw, 42px);
+    font-size: clamp(22px, 6.4vw, 30px);
   }
 
   .info-page {
-    padding-top: 48px;
+    padding-top: 30px;
   }
 
+  /* The panel opens onto its own title, then immediately a second eyebrow and a
+     display heading. At 13vw that heading ran to six lines and 298px -- 35% of a
+     phone screen -- and pushed the map, the services and the contact links below
+     the fold. This is a utility surface; the editorial size belongs on the page,
+     not here. */
   .info-intro {
     grid-template-columns: 1fr;
-    gap: 22px;
-    padding-bottom: 54px;
+    gap: 16px;
+    padding-bottom: 34px;
   }
 
   .info-intro h3 {
     grid-column: auto;
     grid-row: auto;
-    font-size: clamp(40px, 13vw, 60px);
+    font-size: clamp(26px, 8.4vw, 40px);
+    line-height: 1.04;
   }
 
+  /* Four service cards, each reserving 230px and a 27px heading that wrapped to
+     two or three lines. They are labels -- Lettini, Parcheggio gratuito -- and
+     they read fine at a size that lets all four sit on one screen. */
   .info-feature-grid article {
-    min-height: 230px;
-    padding: 20px;
+    min-height: 168px;
+    padding: 16px;
   }
 
   .info-feature-grid h4 {
-    margin-top: 44px;
-    font-size: 27px;
+    margin-top: 22px;
+    font-size: 20px;
+  }
+
+  .reservation-band h3 {
+    font-size: clamp(24px, 7vw, 34px);
   }
 
   .reservation-band {
