@@ -876,25 +876,44 @@
       </section>
     </div>
 
-    <aside
-      class="cookie-banner"
-      data-cookie-banner
-      role="dialog"
-      aria-labelledby="cookie-title"
-      aria-describedby="cookie-description"
-      hidden
-    >
-      <div>
-        <p class="eyebrow" id="cookie-title">Cookies</p>
-        <p id="cookie-description">Google Maps needs your consent.</p>
+    <!-- First visit only: language and consent in one step, over a dimmed and
+         locked page. Deliberately NOT a language gate that runs before the page
+         renders -- "/" is the canonical and x-default, and an interstitial that
+         is not consent-related is what put its indexing at risk before. Nothing
+         here redirects on its own; only a button press navigates. -->
+    <div class="welcome-gate" data-cookie-banner data-welcome-gate hidden>
+      <div
+        class="welcome-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cookie-title"
+        aria-describedby="cookie-description"
+      >
+        <p class="eyebrow" id="cookie-title">Welcome</p>
+        <p class="welcome-step">Choose your language</p>
+        <div class="welcome-languages" data-welcome-languages>
+          <button type="button" data-welcome-language="sq" aria-pressed="true">
+            <span aria-hidden="true">🇦🇱</span>Shqip
+          </button>
+          <button type="button" data-welcome-language="it" aria-pressed="false">
+            <span aria-hidden="true">🇮🇹</span>Italiano
+          </button>
+          <button type="button" data-welcome-language="en" aria-pressed="false">
+            <span aria-hidden="true">🇬🇧</span>English
+          </button>
+        </div>
+        <p id="cookie-description">
+          We store your language and your choice on this device. Google Maps only loads if you accept.
+        </p>
+        <a class="welcome-terms" href="/en/privacy">Privacy and cookies</a>
+        <div class="cookie-actions">
+          <button class="cookie-button cookie-button--quiet" type="button" data-cookie-choice="essential">
+            Decline
+          </button>
+          <button class="cookie-button" type="button" data-cookie-choice="all">Accept</button>
+        </div>
       </div>
-      <div class="cookie-actions">
-        <button class="cookie-button cookie-button--quiet" type="button" data-cookie-choice="essential">
-          Decline
-        </button>
-        <button class="cookie-button" type="button" data-cookie-choice="all">Accept</button>
-      </div>
-    </aside>
+    </div>
 
     <a
       class="whatsapp-button"

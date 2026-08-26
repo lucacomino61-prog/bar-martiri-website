@@ -134,12 +134,6 @@
     return `${base} ${index + 1}`;
   }
 
-  const LANGUAGE_OFFER = Object.freeze({
-    sq: { label: 'Kjo faqe disponohet edhe në shqip.', accept: 'Shiko në shqip', dismiss: 'Mbyll' },
-    it: { label: 'Questa pagina è disponibile anche in italiano.', accept: 'Vedi in italiano', dismiss: 'Chiudi' },
-    en: { label: 'This page is also available in English.', accept: 'View in English', dismiss: 'Dismiss' },
-  });
-
   const SEO_TEXT = Object.freeze({
     sq: {
       title: 'Bar Martiri Spille | Akullore dhe Shezlone Pranë Detit',
@@ -258,6 +252,9 @@
     'Kërko produktin': { sq: 'Kërko produktin', it: 'Cerca un prodotto', en: 'Search for a product' },
     'Cookies': { sq: 'Cookies', it: 'Cookie', en: 'Cookies' },
     'Privatësia dhe cookies': { sq: 'Privatësia dhe cookies', it: 'Privacy e cookie', en: 'Privacy and cookies' },
+    'Mirë se erdhe': { sq: 'Mirë se erdhe', it: 'Benvenuto', en: 'Welcome' },
+    'Zgjidh gjuhën': { sq: 'Zgjidh gjuhën', it: 'Scegli la lingua', en: 'Choose your language' },
+    'Ruajmë gjuhën dhe pëlqimin tënd në këtë pajisje. Google Maps ngarkohet vetëm nëse pranon.': { sq: 'Ruajmë gjuhën dhe pëlqimin tënd në këtë pajisje. Google Maps ngarkohet vetëm nëse pranon.', it: 'Salviamo la lingua e il tuo consenso su questo dispositivo. Google Maps si carica solo se accetti.', en: 'We store your language and your choice on this device. Google Maps only loads if you accept.' },
     'Menaxho cookies': { sq: 'Menaxho cookies', it: 'Gestisci i cookie', en: 'Manage cookies' },
     'Për Google Maps kërkohet pëlqimi yt.': { sq: 'Për Google Maps kërkohet pëlqimi yt.', it: 'Google Maps richiede il tuo consenso.', en: 'Google Maps needs your consent.' },
     'Lexo politikën e privatësisë': { sq: 'Lexo politikën e privatësisë', it: 'Leggi l’informativa sulla privacy', en: 'Read the privacy policy' },
@@ -1526,49 +1523,10 @@
     }
 
     applyLanguage(routeLanguage && LANGUAGE_LOCALES[routeLanguage] ? routeLanguage : (elsewhere ? 'sq' : initialLanguage));
-    if (elsewhere && source === 'guessed') offerLanguage(initialLanguage, languagePath);
     void refreshProducts();
     void refreshSunbedPrice();
     restoreScrollAfterLanguageSwitch();
     scheduleStoryMotion();
-  }
-
-  // Non-blocking "this page is also available in X" bar. Replaces the old
-  // automatic redirect; keeps the visitor one tap from their own language.
-  function offerLanguage(language, languagePath) {
-    const copy = LANGUAGE_OFFER[language];
-    if (!copy || document.querySelector('[data-language-offer]')) return;
-
-    const bar = document.createElement('aside');
-    bar.className = 'language-offer';
-    bar.setAttribute('data-language-offer', '');
-    bar.lang = LANGUAGE_LOCALES[language] || language;
-
-    const link = document.createElement('a');
-    link.href = languagePath;
-    link.className = 'language-offer-accept';
-    link.textContent = copy.accept;
-    link.addEventListener('click', () => {
-      try {
-        localStorage.setItem(LANGUAGE_KEY, language);
-      } catch {
-        // Navigation still applies when storage is unavailable.
-      }
-      writeCookie(LANGUAGE_COOKIE_NAME, language);
-    });
-
-    const dismiss = document.createElement('button');
-    dismiss.type = 'button';
-    dismiss.className = 'language-offer-dismiss';
-    dismiss.setAttribute('aria-label', copy.dismiss);
-    dismiss.textContent = '×';
-    dismiss.addEventListener('click', () => bar.remove());
-
-    const label = document.createElement('span');
-    label.textContent = copy.label;
-
-    bar.append(label, link, dismiss);
-    document.body.append(bar);
   }
 
   languageSwitches.forEach((button) => {
@@ -2513,36 +2471,79 @@
     hideCookieBanner();
   }
 
-  function positionCookieBanner() {
-    if (!cookieBanner || cookieBanner.hidden) {
-      document.documentElement.style.removeProperty('--cookie-banner-offset');
+  // Language and consent are settled together, in one step, before anything
+  // else is worth reading. The language is only marked here -- both buttons
+  // commit it, so a single press finishes the whole thing.
+  const welcomeLanguageButtons = [...document.querySelectorAll('[data-welcome-language]')];
+  let gateLanguage = null;
+  let gateInertTargets = [];
+
+  function setGateLanguage(language) {
+    if (!LANGUAGE_LOCALES[language]) return;
+    gateLanguage = language;
+    welcomeLanguageButtons.forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.welcomeLanguage === language));
+    });
+  }
+
+  welcomeLanguageButtons.forEach((button) => {
+    button.addEventListener('click', () => setGateLanguage(button.dataset.welcomeLanguage));
+  });
+
+  // Returns true when it has started a navigation, so the caller stops.
+  function commitGateLanguage() {
+    if (!gateLanguage) return false;
+    try {
+      localStorage.setItem(LANGUAGE_KEY, gateLanguage);
+    } catch {
+      // The cookie below still carries the choice when storage is unavailable.
+    }
+    writeCookie(LANGUAGE_COOKIE_NAME, gateLanguage);
+    const path = SEO_TEXT[gateLanguage]?.path;
+    if (path && window.location.pathname !== path) {
+      window.location.assign(path);
+      return true;
+    }
+    return false;
+  }
+
+  // inert on every sibling rather than a hand-written focus trap: it blocks
+  // pointer and keyboard in one go, so Tab cannot reach the page behind.
+  function lockPageForGate(locked) {
+    document.documentElement.classList.toggle('is-gated', locked);
+    if (locked) {
+      gateInertTargets = [...document.body.children].filter(
+        (element) => element !== cookieBanner && !element.hasAttribute('inert')
+      );
+      gateInertTargets.forEach((element) => element.setAttribute('inert', ''));
       return;
     }
-    const { top } = cookieBanner.getBoundingClientRect();
-    const reserved = window.innerHeight - top + 16;
-    document.documentElement.style.setProperty('--cookie-banner-offset', `${Math.max(0, reserved)}px`);
+    gateInertTargets.forEach((element) => element.removeAttribute('inert'));
+    gateInertTargets = [];
   }
 
   function showCookieBanner() {
     if (!cookieBanner) return;
+    setGateLanguage(gateLanguage || getInitialLanguage().language);
     window.setTimeout(
       () => {
         cookieBanner.hidden = false;
+        lockPageForGate(true);
         requestAnimationFrame(() => {
           cookieBanner.classList.add('is-visible');
-          positionCookieBanner();
+          welcomeLanguageButtons
+            .find((button) => button.getAttribute('aria-pressed') === 'true')
+            ?.focus();
         });
-        window.addEventListener('resize', positionCookieBanner);
       },
-      reducedMotion ? 0 : 900
+      reducedMotion ? 0 : 400
     );
   }
 
   function hideCookieBanner() {
     if (!cookieBanner) return;
     cookieBanner.classList.remove('is-visible');
-    window.removeEventListener('resize', positionCookieBanner);
-    document.documentElement.style.removeProperty('--cookie-banner-offset');
+    lockPageForGate(false);
     window.setTimeout(() => {
       cookieBanner.hidden = true;
     }, reducedMotion ? 0 : 240);
@@ -2566,6 +2567,9 @@
     button.addEventListener('click', () => {
       const choice = button.dataset.cookieChoice === 'all' ? 'all' : 'essential';
       saveCookiePreference(choice);
+      // The consent cookie is domain-wide, so it survives the language
+      // navigation and the gate does not reappear on the other locale.
+      if (commitGateLanguage()) return;
       if (choice === 'all' && activePanel === 'info') loadMap();
       if (choice === 'essential') unloadMap();
     });
