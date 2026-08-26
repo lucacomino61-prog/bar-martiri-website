@@ -9,6 +9,10 @@ const requiredFiles = [
   'en/index.html',
   'admin.html',
   'privacy.html',
+  'terms.html',
+  'it/terms.html',
+  'en/terms.html',
+  '404.html',
   'image-sitemap.xml',
   'styles.css',
   'admin.css',
@@ -36,6 +40,9 @@ const backupProducts = JSON.parse(
 );
 
 const assertions = [
+  [publicHtml.includes('href="/terms"'), 'The footer must link to the terms page'],
+  [(publicHtml.match(/<details class="faq-item"/g) || []).length >= 5, 'The FAQ must ship with its questions in the static HTML'],
+  [publicHtml.includes('data-scroll-progress') && publicHtml.includes('data-to-top'), 'Scroll progress and back-to-top controls are required'],
   [!publicHtml.includes('data-language-choice="sq" disabled'), 'Language choices must be immediately enabled'],
   [!publicScript.includes('/.netlify/functions/google-reviews'), 'Broken reviews endpoint must not be requested'],
   [!adminHtml.includes('crypto-js.min.js'), 'Production admin must not load local password fallback'],
@@ -75,8 +82,8 @@ const assertions = [
     'Albanian service copy must use the approved Shezlone and Rezervo wording',
   ],
   [
-    (publicHtml.match(/data-language-switcher/g) || []).length === 4,
-    'Language controls must be available in the header and all three panels',
+    (publicHtml.match(/data-language-switcher/g) || []).length === 5,
+    'Language controls must be available in the header and all four panels',
   ],
   [
     publicHtml.includes('data-menu-search') && publicHtml.includes('data-category-tabs'),

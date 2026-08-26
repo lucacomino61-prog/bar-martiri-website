@@ -23,6 +23,8 @@ const publicFiles = [
   'sitemap.xml',
   'image-sitemap.xml',
   'privacy.html',
+  'terms.html',
+  '404.html',
   'vercel-analytics.js',
 ];
 

@@ -71,6 +71,7 @@ for (const [language, locale] of Object.entries(locales)) {
     .replace('<head>', '<head>\n    <base href="/">')
     .replaceAll('href="#', `href="${locale.path}#`)
     .replaceAll('href="/privacy"', `href="${locale.path}privacy"`)
+    .replaceAll('href="/terms"', `href="${locale.path}terms"`)
     .replace(
       'content="Bar Martiri në Spille, Shqipëri: shezlone, parkim falas, akullore, kafe dhe pije pranë detit për pushimet tuaja verore."',
       `content="${locale.description}"`

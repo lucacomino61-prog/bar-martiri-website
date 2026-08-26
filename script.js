@@ -41,10 +41,16 @@
   const storyBodyEl = document.querySelector('[data-story-body]');
   const whatsappButton = document.querySelector('[data-whatsapp-button]');
   const siteHeader = document.querySelector('.site-header');
+  const chatPanelEl = document.querySelector('.dock-panel--chat');
   const chatMessagesEl = document.querySelector('[data-chat-messages]');
   const chatEmptyEl = document.querySelector('[data-chat-empty]');
   const chatFormEl = document.querySelector('[data-chat-form]');
+  const chatInputEl = document.querySelector('[data-chat-input]');
+  const chatSendButton = chatFormEl?.querySelector('button[type="submit"]') || null;
   const chatNameInputEl = document.querySelector('[data-chat-name-input]');
+  const chatPresenceEl = document.querySelector('[data-chat-presence]');
+  const chatErrorEl = document.querySelector('[data-chat-error]');
+  const chatJumpEl = document.querySelector('[data-chat-jump]');
   const chatUnreadBadge = document.querySelector('[data-chat-unread]');
   const basketItemsEl = document.querySelector('[data-basket-items]');
   const basketEmptyEl = document.querySelector('[data-basket-empty]');
@@ -288,14 +294,127 @@
     'Porosi e re': { sq: 'Porosi e re', it: 'Nuovo ordine', en: 'New order' },
     'Galeria': { sq: 'Galeria', it: 'Galleria', en: 'Gallery' },
     'Shkruaj në WhatsApp': { sq: 'Shkruaj në WhatsApp', it: 'Scrivici su WhatsApp', en: 'Message us on WhatsApp' },
-    'Emri yt (opsionale)': { sq: 'Emri yt (opsionale)', it: 'Il tuo nome (opzionale)', en: 'Your name (optional)' },
+    'p.sh. Ana': { sq: 'p.sh. Ana', it: 'es. Anna', en: 'e.g. Anna' },
     'Hap chat-in me ne': { sq: 'Hap chat-in me ne', it: 'Apri la chat con noi', en: 'Open chat with us' },
     'Mbyll chat-in': { sq: 'Mbyll chat-in', it: 'Chiudi la chat', en: 'Close chat' },
-    'Shkruaji Bar Martiri': { sq: 'Shkruaji Bar Martiri', it: 'Scrivi a Bar Martiri', en: 'Message Bar Martiri' },
-    'Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.': {
-      sq: 'Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.',
-      it: 'Scrivici un messaggio e ti risponderemo il prima possibile.',
-      en: 'Send us a message and we will reply as soon as we can.',
+    'Biseda me Bar Martiri': {
+      sq: 'Biseda me Bar Martiri',
+      it: 'La conversazione con Bar Martiri',
+      en: 'Your conversation with Bar Martiri',
+    },
+    'Na shkruaj. Përgjigjemi nga bari.': {
+      sq: 'Na shkruaj. Përgjigjemi nga bari.',
+      it: 'Scrivici. Rispondiamo dal bar.',
+      en: 'Write to us. We answer from the bar.',
+    },
+    'Për shezlone, çmime, orare ose çfarëdo tjetër. Mesazhi vjen te telefoni ynë.': {
+      sq: 'Për shezlone, çmime, orare ose çfarëdo tjetër. Mesazhi vjen te telefoni ynë.',
+      it: 'Per lettini, prezzi, orari o qualsiasi altra cosa. Il messaggio arriva sul nostro telefono.',
+      en: 'About sunbeds, prices, opening hours or anything else. The message reaches our phone.',
+    },
+    'A ka shezlone të lira sot?': {
+      sq: 'A ka shezlone të lira sot?',
+      it: 'Ci sono lettini liberi oggi?',
+      en: 'Any free sunbeds today?',
+    },
+    'Sa kushton shezlongu për një ditë?': {
+      sq: 'Sa kushton shezlongu për një ditë?',
+      it: 'Quanto costa un lettino per un giorno?',
+      en: 'How much is a sunbed for the day?',
+    },
+    'Deri në sa orë jeni hapur?': {
+      sq: 'Deri në sa orë jeni hapur?',
+      it: 'Fino a che ora siete aperti?',
+      en: 'How late are you open?',
+    },
+    'Pyetjet që na bëni më shpesh.': {
+      sq: 'Pyetjet që na bëni më shpesh.',
+      it: 'Le domande che ci fate più spesso.',
+      en: 'The questions we get asked most.',
+    },
+    'Nuk e gjete përgjigjen? Na shkruaj në chat ose telefono — përgjigjemi nga bari.': {
+      sq: 'Nuk e gjete përgjigjen? Na shkruaj në chat ose telefono — përgjigjemi nga bari.',
+      it: 'Non trovi la risposta? Scrivici in chat o telefonaci — rispondiamo dal bar.',
+      en: 'Not answered here? Message us in the chat or call — we answer from the bar.',
+    },
+    'A duhet të rezervoj shezlong?': {
+      sq: 'A duhet të rezervoj shezlong?',
+      it: 'Devo prenotare il lettino?',
+      en: 'Do I need to reserve a sunbed?',
+    },
+    'Në ditët e zakonshme jo, gjen vend edhe pa rezervim. Për fundjavat dhe gushtin të këshillojmë të telefonosh një ditë para. Rezervimet i marrim vetëm me telefon.': {
+      sq: 'Në ditët e zakonshme jo, gjen vend edhe pa rezervim. Për fundjavat dhe gushtin të këshillojmë të telefonosh një ditë para. Rezervimet i marrim vetëm me telefon.',
+      it: 'Nei giorni feriali no, trovi posto anche senza prenotare. Per i weekend e per agosto ti consigliamo di telefonare il giorno prima. Le prenotazioni le prendiamo solo per telefono.',
+      en: 'On weekdays no, you will find space without booking. For weekends and for August we suggest calling the day before. We take reservations by phone only.',
+    },
+    'Sa kushton një shezlong për një ditë?': {
+      sq: 'Sa kushton një shezlong për një ditë?',
+      it: 'Quanto costa un lettino per un giorno?',
+      en: 'How much is a sunbed for a day?',
+    },
+    'Çmimi i ditës është ai që shfaqet te seksioni i shezloneve në këtë faqe, dhe përfshin çadrën. E përditësojmë ne, prandaj çmimi në faqe është gjithmonë ai që paguan në plazh.': {
+      sq: 'Çmimi i ditës është ai që shfaqet te seksioni i shezloneve në këtë faqe, dhe përfshin çadrën. E përditësojmë ne, prandaj çmimi në faqe është gjithmonë ai që paguan në plazh.',
+      it: 'Il prezzo del giorno è quello mostrato nella sezione dei lettini di questa pagina, e comprende l’ombrellone. Lo aggiorniamo noi, quindi il prezzo sul sito è sempre quello che paghi in spiaggia.',
+      en: 'The day rate is the one shown in the sunbed section of this page, and it includes the umbrella. We keep it updated, so the price on the site is always the price you pay on the beach.',
+    },
+    'A ka parkim, dhe a paguhet?': {
+      sq: 'A ka parkim, dhe a paguhet?',
+      it: 'C’è parcheggio, e si paga?',
+      en: 'Is there parking, and does it cost anything?',
+    },
+    'Po, parkimi është falas për klientët tanë, direkt para barit në Rrugën e Pishave.': {
+      sq: 'Po, parkimi është falas për klientët tanë, direkt para barit në Rrugën e Pishave.',
+      it: 'Sì, il parcheggio è gratuito per i nostri clienti, proprio davanti al bar in Rruga e Pishave.',
+      en: 'Yes — parking is free for our guests, right in front of the bar on Rruga e Pishave.',
+    },
+    'Si funksionon porosia te shezlongu?': {
+      sq: 'Si funksionon porosia te shezlongu?',
+      it: 'Come funziona l’ordine al lettino?',
+      en: 'How does ordering to the sunbed work?',
+    },
+    'Zgjedh nga menuja, shkruan sektorin, rreshtin dhe numrin e çadrës — janë të shkruar në shtyllën e çadrës sate — dhe ta sjellim aty, zakonisht brenda 10 minutash. Paguhet në dorëzim, në vend.': {
+      sq: 'Zgjedh nga menuja, shkruan sektorin, rreshtin dhe numrin e çadrës — janë të shkruar në shtyllën e çadrës sate — dhe ta sjellim aty, zakonisht brenda 10 minutash. Paguhet në dorëzim, në vend.',
+      it: 'Scegli dal menu, indichi settore, fila e numero dell’ombrellone — sono scritti sul palo del tuo ombrellone — e te lo portiamo lì, di solito entro 10 minuti. Si paga alla consegna, sul posto.',
+      en: 'You pick from the menu, give your section, row and umbrella number — they are printed on your umbrella pole — and we bring it there, usually within 10 minutes. You pay on delivery, in person.',
+    },
+    'A mund të paguaj me kartë ose online?': {
+      sq: 'A mund të paguaj me kartë ose online?',
+      it: 'Posso pagare con carta o online?',
+      en: 'Can I pay by card or online?',
+    },
+    'Porositë nga faqja paguhen në dorëzim. Faqja nuk pranon pagesa online dhe nuk të kërkon kurrë të dhëna karte.': {
+      sq: 'Porositë nga faqja paguhen në dorëzim. Faqja nuk pranon pagesa online dhe nuk të kërkon kurrë të dhëna karte.',
+      it: 'Gli ordini dal sito si pagano alla consegna. Il sito non accetta pagamenti online e non ti chiede mai i dati della carta.',
+      en: 'Orders from the site are paid on delivery. The site takes no online payments and never asks for card details.',
+    },
+    'Çdo ditë nga 06:00 deri në 23:00, nga maji deri në shtator. Chat-in e lexojmë brenda këtij orari.': {
+      sq: 'Çdo ditë nga 06:00 deri në 23:00, nga maji deri në shtator. Chat-in e lexojmë brenda këtij orari.',
+      it: 'Tutti i giorni dalle 06:00 alle 23:00, da maggio a settembre. La chat la leggiamo in questo orario.',
+      en: 'Every day from 06:00 to 23:00, May to September. We read the chat within those hours.',
+    },
+    'A mund të vij me fëmijë?': {
+      sq: 'A mund të vij me fëmijë?',
+      it: 'Posso venire con i bambini?',
+      en: 'Can I come with children?',
+    },
+    'Sigurisht. Deti këtu është i cekët për një distancë të gjatë, dhe akullorja e freskët është pikërisht arsyeja pse shumica e familjeve ndalen te ne.': {
+      sq: 'Sigurisht. Deti këtu është i cekët për një distancë të gjatë, dhe akullorja e freskët është pikërisht arsyeja pse shumica e familjeve ndalen te ne.',
+      it: 'Certo. Qui il mare resta basso per un lungo tratto, e il gelato fresco è esattamente il motivo per cui la maggior parte delle famiglie si ferma da noi.',
+      en: 'Of course. The sea here stays shallow for a long way out, and the fresh ice cream is exactly why most families stop with us.',
+    },
+    'Kushtet e përdorimit': {
+      sq: 'Kushtet e përdorimit',
+      it: 'Condizioni d’uso',
+      en: 'Terms of use',
+    },
+    'Kthehu lart': { sq: 'Kthehu lart', it: 'Torna su', en: 'Back to top' },
+    'Përditësuar më': { sq: 'Përditësuar më', it: 'Aggiornato il', en: 'Last updated' },
+    '26 gusht 2026': { sq: '26 gusht 2026', it: '26 agosto 2026', en: '26 August 2026' },
+    'Kopjo adresën': { sq: 'Kopjo adresën', it: 'Copia l’indirizzo', en: 'Copy the address' },
+    'Si të të thërrasim?': {
+      sq: 'Si të të thërrasim?',
+      it: 'Come ti chiamiamo?',
+      en: 'What should we call you?',
     },
     'Shkruaj një mesazh...': { sq: 'Shkruaj një mesazh...', it: 'Scrivi un messaggio...', en: 'Write a message...' },
     'Dërgo': { sq: 'Dërgo', it: 'Invia', en: 'Send' },
@@ -340,6 +459,36 @@
     orderError: { sq: 'Porosia nuk mund të dërgohet. Provo përsëri.', it: 'L’ordine non può essere inviato. Riprova.', en: 'The order couldn’t be sent. Try again.' },
     newOrder: { sq: 'Porosi e re', it: 'Nuovo ordine', en: 'New order' },
     storyEyebrow: { sq: 'Rreth Nesh', it: 'Chi Siamo', en: 'About Us' },
+    chatPresenceOpen: {
+      sq: 'Hapur tani · përgjigjemi brenda pak minutash',
+      it: 'Aperto ora · rispondiamo in pochi minuti',
+      en: 'Open now · we usually reply within minutes',
+    },
+    // Deliberately not an apology: a message left at night is answered at
+    // opening, which is the one thing chat does better than a phone call.
+    chatPresenceClosed: {
+      sq: 'Mbyllur tani · shkruaj prapë, përgjigjemi kur hapim në {open}',
+      it: 'Ora chiuso · scrivici lo stesso, rispondiamo quando apriamo alle {open}',
+      en: 'Closed now · write anyway, we reply when we open at {open}',
+    },
+    chatToday: { sq: 'Sot', it: 'Oggi', en: 'Today' },
+    chatYesterday: { sq: 'Dje', it: 'Ieri', en: 'Yesterday' },
+    chatFromYou: { sq: 'Ti', it: 'Tu', en: 'You' },
+    chatFromBar: { sq: 'Bar Martiri', it: 'Bar Martiri', en: 'Bar Martiri' },
+    chatSending: { sq: 'Po dërgohet…', it: 'Invio in corso…', en: 'Sending…' },
+    chatSendFailed: {
+      sq: 'Mesazhi nuk u dërgua. Kontrollo lidhjen dhe provo përsëri.',
+      it: 'Il messaggio non è stato inviato. Controlla la connessione e riprova.',
+      en: 'The message wasn’t sent. Check your connection and try again.',
+    },
+    chatRetry: { sq: 'Provo përsëri', it: 'Riprova', en: 'Try again' },
+    copied: { sq: 'U kopjua', it: 'Copiato', en: 'Copied' },
+    chatNewMessage: { sq: '1 mesazh i ri', it: '1 nuovo messaggio', en: '1 new message' },
+    chatNewMessages: {
+      sq: '{count} mesazhe të reja',
+      it: '{count} nuovi messaggi',
+      en: '{count} new messages',
+    },
   });
 
   const optimizedLocalImages = {
@@ -650,10 +799,28 @@
   const CHAT_CONVERSATION_KEY = 'barMartiri.chatConversation.v1';
   const CHAT_POLL_INTERVAL = 4000;
   const CHAT_BACKGROUND_POLL_INTERVAL = 20000;
+  // A run of messages from the same sender inside this window reads as one
+  // turn: it gets one tail corner and one timestamp, not one of each per line.
+  const CHAT_TURN_WINDOW = 5 * 60 * 1000;
+  // How close to the bottom still counts as "following the conversation". Below
+  // that, an arriving message must not steal the scroll position.
+  const CHAT_FOLLOW_SLACK = 72;
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const CHAT_DAY_MS = 24 * 60 * 60 * 1000;
   let chatConversationId = localStorage.getItem(CHAT_CONVERSATION_KEY) || null;
   let chatPollTimer = 0;
   let chatBackgroundPollTimer = 0;
-  if (chatNameInputEl) chatNameInputEl.hidden = Boolean(chatConversationId);
+  // The thread is the server's list plus whatever is still in flight from this
+  // device. Keeping them separate is what lets a four-second poll redraw the
+  // whole conversation without discarding a message that has not landed yet.
+  let chatServerMessages = [];
+  let chatPendingMessages = [];
+  let chatPendingSeed = 0;
+  let chatUnseen = 0;
+  // A returning visitor has a conversation id before the thread has arrived.
+  // Without this the invitation flashes up for one frame on top of a
+  // conversation they are already in the middle of.
+  let chatLoaded = false;
 
   function chatRestHeaders(extra = {}) {
     return {
@@ -663,32 +830,229 @@
     };
   }
 
+  // Intl never throws on a locale it does not carry -- it quietly formats as
+  // the engine default, which on a page reading Albanian would print American
+  // date order. Fall back on purpose instead of by accident.
+  // Intl never throws on a locale it does not carry -- it quietly formats as the
+  // engine default. sq-AL is one it does not carry, so asking it for an Albanian
+  // date returns "Aug 24": an English month, in American order, to this site's
+  // primary audience. Returning null says that out loud so the caller can pick
+  // its own fallback instead of inheriting one.
+  function chatLocale() {
+    const locale = LANGUAGE_LOCALES[currentLanguage] || 'sq-AL';
+    try {
+      return Intl.DateTimeFormat.supportedLocalesOf([locale]).length ? locale : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Days are the bar's days, not the visitor's: someone writing from Italy at
+  // 00:30 is still inside the Albanian evening the staff are living in. Both of
+  // these already exist for the sunset countdown -- getSpilleCalendarDate
+  // returns the Tirane calendar day parked at UTC noon, which is far enough
+  // from either midnight to compare as a plain date string.
+  function chatDayKey(date) {
+    if (!date) return '';
+    try {
+      return getSpilleCalendarDate(date).toISOString().slice(0, 10);
+    } catch {
+      return date.toDateString();
+    }
+  }
+
+  function chatDayLabel(date) {
+    const key = chatDayKey(date);
+    const now = new Date();
+    if (key === chatDayKey(now)) return dynamicText('chatToday');
+    if (key === chatDayKey(new Date(now.getTime() - CHAT_DAY_MS))) return dynamicText('chatYesterday');
+    // key is YYYY-MM-DD, so this is the dd.MM Albanian writes dates in anyway --
+    // the right answer for the one language Intl cannot name a month in, rather
+    // than a borrowed English one.
+    const numeric = `${key.slice(8, 10)}.${key.slice(5, 7)}`;
+    const locale = chatLocale();
+    if (!locale) return numeric;
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'Europe/Tirane',
+      }).format(date);
+    } catch {
+      return numeric;
+    }
+  }
+
+  function chatIcon(pathData, className) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    if (className) svg.setAttribute('class', className);
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', pathData);
+    svg.append(path);
+    return svg;
+  }
+
+  function renderChatPresence() {
+    if (!chatPresenceEl) return;
+    const open = isWhatsAppHour();
+    chatPresenceEl.classList.toggle('is-open', open);
+    const label = chatPresenceEl.querySelector('[data-chat-presence-text]');
+    if (!label) return;
+    // Not tagged data-i18n-dynamic: applyLanguage rewrites those from the raw
+    // string, which would drop the hour substituted in below.
+    label.textContent = dynamicText(open ? 'chatPresenceOpen' : 'chatPresenceClosed').replace(
+      '{open}',
+      `${String(OPENING_HOUR).padStart(2, '0')}:00`
+    );
+  }
+
+  function isChatAtBottom() {
+    if (!chatMessagesEl) return true;
+    const distance =
+      chatMessagesEl.scrollHeight - chatMessagesEl.scrollTop - chatMessagesEl.clientHeight;
+    return distance <= CHAT_FOLLOW_SLACK;
+  }
+
+  // html sets scroll-behavior: smooth and the panel inherits it, so the
+  // behaviour is always named here rather than left to the cascade -- 'instant'
+  // is the only value that actually overrides a smooth scroller.
+  function scrollChatToBottom(behavior = 'instant') {
+    if (!chatMessagesEl) return;
+    chatMessagesEl.scrollTo({ top: chatMessagesEl.scrollHeight, behavior });
+  }
+
+  function renderChatJump() {
+    if (!chatJumpEl) return;
+    chatJumpEl.hidden = chatUnseen < 1;
+    const label = chatJumpEl.querySelector('[data-chat-jump-text]');
+    if (label) {
+      label.textContent = dynamicText(
+        chatUnseen === 1 ? 'chatNewMessage' : 'chatNewMessages'
+      ).replace('{count}', String(chatUnseen));
+    }
+  }
+
+  function setChatError(text) {
+    if (!chatErrorEl) return;
+    chatErrorEl.textContent = text || '';
+    chatErrorEl.hidden = !text;
+  }
+
   // Tracks how much of the thread has already been shown, so a poll that
   // re-renders the whole conversation animates only what actually arrived.
   // Opening the panel on an existing thread animates nothing.
   let renderedChatCount = 0;
   let chatRendered = false;
 
-  function renderChatMessages(messages) {
+  function buildChatRow(message, options) {
+    const row = document.createElement('div');
+    row.className = `chat-row chat-row--${message.sender}`;
+    if (options.turnStart) row.classList.add('is-turn-start');
+    if (options.tail) row.classList.add('is-tail');
+    if (options.fresh) row.classList.add('is-new');
+    if (message.state === 'sending') row.classList.add('is-pending');
+    if (message.state === 'failed') row.classList.add('is-failed');
+
+    const bubble = document.createElement('p');
+    bubble.className = 'chat-message-bubble';
+    // Sighted readers get the side of the thread a bubble sits on; a screen
+    // reader gets the same information from this.
+    const who = document.createElement('span');
+    who.className = 'sr-only';
+    who.textContent = `${dynamicText(message.sender === 'admin' ? 'chatFromBar' : 'chatFromYou')}: `;
+    bubble.append(who, document.createTextNode(message.body));
+    row.append(bubble);
+
+    if (message.state === 'failed') {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'chat-retry';
+      retry.dataset.chatRetry = message.id;
+      // Text, not a 12px refresh arc: at this size the glyph is a smudge and
+      // the word is the affordance.
+      retry.textContent = dynamicText('chatRetry');
+      row.append(retry);
+      return row;
+    }
+
+    if (options.tail) {
+      const meta = document.createElement('p');
+      meta.className = 'chat-meta';
+      if (message.state === 'sending') {
+        meta.textContent = dynamicText('chatSending');
+      } else if (message.createdAt) {
+        const time = document.createElement('time');
+        time.dateTime = message.createdAt.toISOString();
+        time.textContent = formatSpilleTime(message.createdAt);
+        meta.append(time);
+        if (message.sender === 'customer') {
+          meta.append(chatIcon('m4 12.5 5 5L20 6.5', 'chat-tick'));
+        }
+      }
+      if (meta.childNodes.length) row.append(meta);
+    }
+
+    return row;
+  }
+
+  function renderChatThread(options = {}) {
     if (!chatMessagesEl) return;
+    const all = [...chatServerMessages, ...chatPendingMessages];
+    // Read the scroll position before the thread is torn down, or every render
+    // looks like the reader was at the bottom.
+    const wasFollowing = options.follow === true || isChatAtBottom();
     // chatRendered, not a count: a brand new conversation renders its first
     // message from zero, and treating that as "nothing rendered yet" meant the
     // very first message a customer sent never animated.
-    const firstFresh = chatRendered ? renderedChatCount : messages.length;
+    const firstFresh = chatRendered ? renderedChatCount : all.length;
+
     chatMessagesEl.replaceChildren();
-    messages.forEach((message, index) => {
-      const bubble = document.createElement('p');
-      bubble.className = `chat-message-bubble chat-message-bubble--${message.sender}`;
-      if (index >= firstFresh) bubble.classList.add('is-new');
-      bubble.textContent = message.body;
-      chatMessagesEl.append(bubble);
+    let lastDayKey = '';
+    all.forEach((message, index) => {
+      const stamp = message.createdAt || new Date();
+      const dayKey = chatDayKey(stamp);
+      if (dayKey !== lastDayKey) {
+        const day = document.createElement('p');
+        day.className = 'chat-day';
+        day.textContent = chatDayLabel(stamp);
+        chatMessagesEl.append(day);
+        lastDayKey = dayKey;
+      }
+      const previous = all[index - 1];
+      const next = all[index + 1];
+      const nextStamp = next?.createdAt || new Date();
+      const continues =
+        Boolean(next) &&
+        next.sender === message.sender &&
+        chatDayKey(nextStamp) === dayKey &&
+        nextStamp.getTime() - stamp.getTime() < CHAT_TURN_WINDOW;
+      chatMessagesEl.append(
+        buildChatRow(message, {
+          turnStart: !previous || previous.sender !== message.sender,
+          tail: !continues,
+          fresh: index >= firstFresh,
+        })
+      );
     });
-    // Monotonic: a thread that shrinks (a deletion, or a short poll response)
-    // must not make already-seen bubbles animate again when it regrows.
-    renderedChatCount = Math.max(renderedChatCount, messages.length);
+
+    // Monotonic: a thread that shrinks (a deletion, or a pending message
+    // handing over to its confirmed twin) must not make already-seen bubbles
+    // animate again when it regrows.
+    renderedChatCount = Math.max(renderedChatCount, all.length);
     chatRendered = true;
-    if (chatEmptyEl) chatEmptyEl.hidden = messages.length > 0;
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    if (chatEmptyEl) {
+      chatEmptyEl.hidden = all.length > 0 || (Boolean(chatConversationId) && !chatLoaded);
+    }
+
+    if (wasFollowing) {
+      chatUnseen = 0;
+      scrollChatToBottom('instant');
+    } else {
+      chatUnseen += options.arrived || 0;
+    }
+    renderChatJump();
   }
 
   async function loadChatMessages() {
@@ -701,9 +1065,17 @@
       });
       if (!response.ok) return;
       const rows = await response.json();
-      renderChatMessages(
-        (rows || []).map((row) => ({ sender: String(row.sender), body: String(row.body || '') }))
-      );
+      const next = (rows || []).map((row) => ({
+        sender: String(row.sender),
+        body: String(row.body || ''),
+        createdAt: row.created_at ? new Date(row.created_at) : null,
+      }));
+      const arrived = next
+        .slice(chatServerMessages.length)
+        .filter((message) => message.sender === 'admin').length;
+      chatServerMessages = next;
+      chatLoaded = true;
+      renderChatThread({ arrived });
     } catch {
       // Keep showing the last known thread if a refresh fails.
     }
@@ -721,7 +1093,6 @@
     if (!newId) throw new Error('Conversation response missing id');
     chatConversationId = String(newId);
     localStorage.setItem(CHAT_CONVERSATION_KEY, chatConversationId);
-    if (chatNameInputEl) chatNameInputEl.hidden = true;
     return chatConversationId;
   }
 
@@ -733,6 +1104,40 @@
       body: JSON.stringify({ p_conversation_id: conversationId, p_body: body }),
     });
     if (!response.ok) throw new Error(`Message request failed with ${response.status}`);
+  }
+
+  // The message appears in the thread the moment it is written and only leaves
+  // it once the server has it. A send that fails keeps its bubble, marked, with
+  // its own way back -- the old version swallowed the error and left the
+  // customer looking at a conversation that had silently lost their message.
+  async function deliverChatMessage(message) {
+    const inFlight = chatPendingMessages.find((item) => item.id === message.id);
+    if (inFlight) {
+      inFlight.state = 'sending';
+      inFlight.createdAt = new Date();
+    } else {
+      chatPendingMessages.push(message);
+    }
+    setChatError('');
+    if (!inFlight) track('chat_submit', { length: message.body.length });
+    renderChatThread({ follow: true });
+
+    try {
+      await sendChatMessage(message.body, chatNameInputEl?.value.trim());
+      chatPendingMessages = chatPendingMessages.filter((item) => item.id !== message.id);
+      track('chat_success', { retry: Boolean(inFlight) });
+      await loadChatMessages();
+      // The first message is what creates the conversation, so background
+      // polling only becomes meaningful here.
+      startChatPolling();
+      startChatBackgroundPoll();
+    } catch {
+      const failed = chatPendingMessages.find((item) => item.id === message.id);
+      if (failed) failed.state = 'failed';
+      track('chat_error');
+      setChatError(dynamicText('chatSendFailed'));
+      renderChatThread({ follow: true });
+    }
   }
 
   async function markChatReadByCustomer() {
@@ -759,10 +1164,56 @@
     chatPollTimer = window.setInterval(() => void loadChatMessages(), CHAT_POLL_INTERVAL);
   }
 
+  function autoGrowChatInput() {
+    if (!chatInputEl) return;
+    chatInputEl.style.height = 'auto';
+    chatInputEl.style.height = `${Math.min(chatInputEl.scrollHeight, 132)}px`;
+  }
+
+  function syncChatSendState() {
+    if (chatSendButton) chatSendButton.disabled = !chatInputEl?.value.trim();
+  }
+
+  // The panel layer is position: fixed, which stays pinned to the layout
+  // viewport, so an on-screen keyboard would cover the composer. Shrinking the
+  // chat panel to the visual viewport puts it back above the keyboard -- and
+  // the dock is behind the keyboard by then, so the foot stops reserving room
+  // for it.
+  function syncChatViewport() {
+    if (!chatPanelEl) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const covered = window.innerHeight - viewport.height - viewport.offsetTop;
+    const keyboardUp = covered > 120;
+    chatPanelEl.classList.toggle('is-keyboard', keyboardUp);
+    if (keyboardUp) {
+      chatPanelEl.style.setProperty('--chat-viewport', `${Math.round(viewport.height)}px`);
+      scrollChatToBottom('instant');
+    } else {
+      chatPanelEl.style.removeProperty('--chat-viewport');
+    }
+  }
+
   async function openChatPanel() {
+    chatUnseen = 0;
+    setChatError('');
+    renderChatPresence();
+    syncChatSendState();
+    autoGrowChatInput();
+    renderChatThread({ follow: true });
+    window.visualViewport?.addEventListener('resize', syncChatViewport);
+    window.visualViewport?.addEventListener('scroll', syncChatViewport);
     await loadChatMessages();
     await markChatReadByCustomer();
     startChatPolling();
+  }
+
+  function closeChatPanel() {
+    stopChatPolling();
+    window.visualViewport?.removeEventListener('resize', syncChatViewport);
+    window.visualViewport?.removeEventListener('scroll', syncChatViewport);
+    chatPanelEl?.classList.remove('is-keyboard');
+    chatPanelEl?.style.removeProperty('--chat-viewport');
   }
 
   async function checkChatUnread() {
@@ -787,22 +1238,67 @@
     chatBackgroundPollTimer = window.setInterval(() => void checkChatUnread(), CHAT_BACKGROUND_POLL_INTERVAL);
   }
 
-  chatFormEl?.addEventListener('submit', async (event) => {
+  chatInputEl?.addEventListener('input', () => {
+    autoGrowChatInput();
+    syncChatSendState();
+  });
+
+  // A hardware keyboard expects Enter to send; a touch keyboard's Enter is the
+  // return key, and hijacking it there costs people their line breaks.
+  const chatEnterSends = window.matchMedia?.('(pointer: fine)').matches ?? false;
+
+  chatInputEl?.addEventListener('keydown', (event) => {
+    if (!chatEnterSends || event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
     event.preventDefault();
-    const input = chatFormEl.querySelector('input[name="message"]');
-    const body = input?.value.trim();
+    chatFormEl?.requestSubmit();
+  });
+
+  // Tapping an opener loads the composer instead of sending it: the visitor
+  // still edits and owns the message that goes out under their name.
+  chatPanelEl?.querySelectorAll('[data-chat-opener]').forEach((opener) => {
+    opener.addEventListener('click', () => {
+      if (!chatInputEl) return;
+      chatInputEl.value = opener.textContent.trim();
+      autoGrowChatInput();
+      syncChatSendState();
+      chatInputEl.focus();
+    });
+  });
+
+  chatMessagesEl?.addEventListener('scroll', () => {
+    if (!isChatAtBottom() || chatUnseen < 1) return;
+    chatUnseen = 0;
+    renderChatJump();
+  });
+
+  chatMessagesEl?.addEventListener('click', (event) => {
+    const trigger = event.target.closest?.('[data-chat-retry]');
+    if (!trigger) return;
+    const message = chatPendingMessages.find((item) => item.id === trigger.dataset.chatRetry);
+    if (message) void deliverChatMessage(message);
+  });
+
+  chatJumpEl?.addEventListener('click', () => {
+    chatUnseen = 0;
+    renderChatJump();
+    scrollChatToBottom('smooth');
+  });
+
+  chatFormEl?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const body = chatInputEl?.value.trim();
     if (!body) return;
-    const submitButton = chatFormEl.querySelector('button[type="submit"]');
-    if (submitButton) submitButton.disabled = true;
-    try {
-      await sendChatMessage(body, chatNameInputEl?.value.trim());
-      input.value = '';
-      await loadChatMessages();
-    } catch {
-      // Keep the typed text so the customer can retry sending it.
-    } finally {
-      if (submitButton) submitButton.disabled = false;
-    }
+    chatInputEl.value = '';
+    autoGrowChatInput();
+    syncChatSendState();
+    chatPendingSeed += 1;
+    void deliverChatMessage({
+      id: `pending-${chatPendingSeed}`,
+      sender: 'customer',
+      body,
+      state: 'sending',
+      createdAt: new Date(),
+    });
   });
 
   async function loadGalleryImages() {
@@ -846,6 +1342,14 @@
         img.alt = String(row.alt_text || row.caption || '').trim() || galleryFallbackAlt(index);
         img.loading = 'lazy';
         img.decoding = 'async';
+        // The shimmer lives on the figure, not the img: an image with no bytes
+        // yet has no height to shimmer in, and clearing it on decode rather
+        // than on load means the placeholder goes when the picture is actually
+        // paintable. A cached image can be complete before this line runs.
+        figure.classList.add('is-loading-image');
+        const settle = () => figure.classList.remove('is-loading-image');
+        if (img.complete) settle();
+        else img.decode().then(settle, settle);
         figure.append(img);
         galleryGridEl.append(figure);
       });
@@ -875,7 +1379,12 @@
   }
 
   function updateWhatsAppVisibility() {
-    if (whatsappButton) whatsappButton.hidden = !isWhatsAppHour();
+    // Hidden while the chat is open: the floating button lands exactly on the
+    // composer's send control -- a hit test at the send button's centre used to
+    // return WhatsApp -- and inside the chat it is a second route to the thing
+    // that panel already is.
+    if (whatsappButton) whatsappButton.hidden = !isWhatsAppHour() || activePanel === 'chat';
+    syncToTopStacking();
   }
 
   function loadCart() {
@@ -1280,10 +1789,12 @@
       !supabaseConfig.publishableKey
     ) {
       setCheckoutError(dynamicText('orderError'));
+      track('order_invalid', { items: cart.length });
       return;
     }
 
     placingOrder = true;
+    track('order_submit', { items: cart.length });
     const submitButton = checkoutForm.querySelector('button[type="submit"]');
     const originalLabel = submitButton?.textContent;
     if (submitButton) {
@@ -1329,8 +1840,10 @@
       renderBasket();
       startOrderStatusPolling();
       void registerPushForOrder(pendingOrderId);
+      track('order_success');
     } catch {
       setCheckoutError(dynamicText('orderError'));
+      track('order_error');
     } finally {
       placingOrder = false;
       if (submitButton) {
@@ -1457,9 +1970,83 @@
     renderStory();
     renderSunbedPrice();
     renderBasket();
+    // Both carry substituted values (an opening hour, a message count) that
+    // applyLanguage's data-i18n-dynamic sweep would overwrite with the raw
+    // template, and the thread's day separators and month names are localized
+    // too, so they are redrawn rather than translated in place.
+    renderChatPresence();
+    renderChatThread();
   }
 
   const SCROLL_RESTORE_KEY = 'barMartiri.scrollRestore.v1';
+  const PANEL_RESTORE_KEY = 'barMartiri.panelRestore.v1';
+
+  // Text-entry fields only, in document order. They are matched by position
+  // rather than by name because several of them have none, and the three locale
+  // builds are generated from one source file -- same markup, translated text --
+  // so the order is identical on either side of the navigation.
+  function panelTextFields(panel) {
+    return [...panel.querySelectorAll('input, textarea')].filter(
+      (field) => !['hidden', 'submit', 'button', 'checkbox', 'radio'].includes(field.type)
+    );
+  }
+
+  // Switching language is a full navigation. The scroll position already
+  // travelled across it; the panel did not, so picking Italian mid-conversation
+  // dropped the visitor back on the home page with their unsent message gone.
+  function savePanelForLanguageSwitch() {
+    try {
+      if (!activePanel) {
+        sessionStorage.removeItem(PANEL_RESTORE_KEY);
+        return;
+      }
+      const panel = panels.find((item) => item.dataset.panel === activePanel);
+      sessionStorage.setItem(
+        PANEL_RESTORE_KEY,
+        JSON.stringify({
+          panel: activePanel,
+          values: panel ? panelTextFields(panel).map((field) => field.value) : [],
+        })
+      );
+    } catch {
+      // Reopening the panel is a nicety; navigate regardless.
+    }
+  }
+
+  function restorePanelAfterLanguageSwitch() {
+    let saved = null;
+    try {
+      saved = sessionStorage.getItem(PANEL_RESTORE_KEY);
+      sessionStorage.removeItem(PANEL_RESTORE_KEY);
+    } catch {
+      return;
+    }
+    if (!saved) return;
+    let state = null;
+    try {
+      state = JSON.parse(saved);
+    } catch {
+      return;
+    }
+    const panel = panels.find((item) => item.dataset.panel === state?.panel);
+    if (!panel) return;
+    // Values go back before the panel opens, so the per-panel setup that runs on
+    // open -- the composer growing to its draft, the send button enabling -- sees
+    // the restored text rather than an empty field.
+    const fields = panelTextFields(panel);
+    const restored = [];
+    fields.forEach((field, index) => {
+      const value = state.values?.[index];
+      if (typeof value !== 'string' || !value) return;
+      field.value = value;
+      restored.push(field);
+    });
+    openPanel(state.panel);
+    // A restored value is not a typed one, so nothing downstream of it has run.
+    // The menu's search box would have shown its query with the full unfiltered
+    // list underneath it. Announce the values now that the panel has rendered.
+    restored.forEach((field) => field.dispatchEvent(new Event('input', { bubbles: true })));
+  }
 
   function restoreScrollAfterLanguageSwitch() {
     let saved = null;
@@ -1526,6 +2113,7 @@
     void refreshProducts();
     void refreshSunbedPrice();
     restoreScrollAfterLanguageSwitch();
+    restorePanelAfterLanguageSwitch();
     scheduleStoryMotion();
   }
 
@@ -1549,6 +2137,7 @@
         } catch {
           // Restoring is a nicety; navigate regardless.
         }
+        savePanelForLanguageSwitch();
         window.location.assign(languagePath);
         return;
       }
@@ -1929,6 +2518,11 @@
 
       if (!supabaseConfig.url || !supabaseConfig.publishableKey) return catalogProducts;
       setDynamicText(menuStatus, 'refreshingMenu');
+      // setDynamicText replaces textContent, so the spinner is prepended after
+      // it and removed by the same assignment when the status clears.
+      menuStatus?.prepend(Object.assign(document.createElement('span'), {
+        className: 'spinner',
+      }));
 
       try {
         const requestProducts = async (includeTranslations = true) => {
@@ -2220,7 +2814,12 @@
     });
 
     previousFocus = trigger || document.activeElement;
+    // Switching straight from one panel to another never routes through
+    // closePanel, so chat has to be told to stand down here or its four-second
+    // poll and its viewport listeners outlive the panel.
+    if (activePanel === 'chat' && name !== 'chat') closeChatPanel();
     activePanel = name;
+    updateWhatsAppVisibility();
     panelLayer.hidden = false;
     target.hidden = false;
     target.scrollTop = 0;
@@ -2272,8 +2871,9 @@
     }
 
     const closingPanel = panels.find((panel) => panel.dataset.panel === activePanel);
-    if (activePanel === 'chat') stopChatPolling();
+    if (activePanel === 'chat') closeChatPanel();
     activePanel = null;
+    updateWhatsAppVisibility();
     panelLayer.classList.remove('is-visible');
     closingPanel?.classList.remove('is-open');
     document.body.classList.remove('is-panel-open');
@@ -2777,6 +3377,165 @@
   updateSunset();
   window.setInterval(updateSunset, 60 * 1000);
   runWhenNear(document.querySelector('[data-spille-dashboard]'), loadSpilleWeather, '500px 0px');
+  /* -------------------------------------------------------------------------
+     Attribution and event tracking
+
+     Vercel Web Analytics is already loaded and is cookie-free, which is why the
+     privacy page can describe it as such. Campaign parameters are kept for the
+     tab only (sessionStorage, not localStorage) so nothing about a visit
+     outlives the visit, and they are attached to the events below rather than
+     written to the database -- no schema change, and no personal data joins a
+     row that the bar can read.
+     ------------------------------------------------------------------------- */
+
+  const CAMPAIGN_KEY = 'barMartiri.campaign.v1';
+  const CAMPAIGN_PARAMS = [
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_term',
+    'utm_content',
+    'gclid',
+    'fbclid',
+  ];
+
+  function captureCampaign() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const found = {};
+      CAMPAIGN_PARAMS.forEach((key) => {
+        const value = params.get(key);
+        if (value) found[key] = value.slice(0, 120);
+      });
+      // First touch wins: a visitor who arrives from an ad and then switches
+      // language should still be credited to the ad, not to the internal
+      // navigation that followed it.
+      if (!Object.keys(found).length || sessionStorage.getItem(CAMPAIGN_KEY)) return;
+      sessionStorage.setItem(CAMPAIGN_KEY, JSON.stringify(found));
+    } catch {
+      // Attribution is optional; never let it break the page.
+    }
+  }
+
+  function campaignData() {
+    try {
+      return JSON.parse(sessionStorage.getItem(CAMPAIGN_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  }
+
+  function track(name, data = {}) {
+    try {
+      window.va?.('event', {
+        name,
+        data: { language: currentLanguage, ...campaignData(), ...data },
+      });
+    } catch {
+      // Analytics must never be able to break a form submit.
+    }
+  }
+
+  captureCampaign();
+
+  /* -------------------------------------------------------------------------
+     Scroll progress and back to top
+     ------------------------------------------------------------------------- */
+
+  const scrollProgressEl = document.querySelector('[data-scroll-progress]');
+  const toTopButton = document.querySelector('[data-to-top]');
+  const TO_TOP_AT = 900;
+
+  function syncScrollAffordances() {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    scrollProgressEl?.style.setProperty('--scroll-progress', progress.toFixed(4));
+
+    if (!toTopButton) return;
+    const wanted = window.scrollY > TO_TOP_AT && !activePanel;
+    if (wanted === !toTopButton.hidden) return;
+    if (wanted) {
+      toTopButton.hidden = false;
+      // Unhide first, then drop the entering class on the next frame, or the
+      // browser has no start value to animate from and the button pops.
+      toTopButton.classList.add('is-entering');
+      requestAnimationFrame(() => toTopButton.classList.remove('is-entering'));
+    } else {
+      toTopButton.hidden = true;
+    }
+  }
+
+  // The WhatsApp button owns the same corner, and only during opening hours.
+  function syncToTopStacking() {
+    if (!toTopButton) return;
+    toTopButton.classList.toggle('is-stacked', Boolean(whatsappButton) && !whatsappButton.hidden);
+  }
+
+  toTopButton?.addEventListener('click', () => {
+    closePanel({ restoreFocus: false });
+    window.scrollTo({ top: 0, behavior: reducedMotion ? 'instant' : 'smooth' });
+    // Send the keyboard back to the top too, not just the pixels.
+    document.querySelector('.skip-link')?.focus({ preventScroll: true });
+  });
+
+  window.addEventListener('scroll', syncScrollAffordances, { passive: true });
+  window.addEventListener('resize', syncScrollAffordances, { passive: true });
+  syncScrollAffordances();
+
+  /* -------------------------------------------------------------------------
+     Copy to clipboard
+     ------------------------------------------------------------------------- */
+
+  const COPY_RESET_DELAY = 2200;
+
+  document.querySelectorAll('[data-copy]').forEach((button) => {
+    const label = button.querySelector('[data-copy-label]');
+    const original = label?.textContent || '';
+    let resetTimer = 0;
+
+    button.addEventListener('click', async () => {
+      const text = button.dataset.copy;
+      if (!text) return;
+      let copied = false;
+      try {
+        // navigator.clipboard is unavailable on insecure origins and inside
+        // some in-app browsers, which is exactly where a beach visitor tends to
+        // open an Instagram link from.
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch {
+        copied = legacyCopy(text);
+      }
+      if (!copied) return;
+      track('copy_address');
+      button.classList.add('is-copied');
+      if (label) label.textContent = dynamicText('copied');
+      window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(() => {
+        button.classList.remove('is-copied');
+        if (label) label.textContent = original;
+      }, COPY_RESET_DELAY);
+    });
+  });
+
+  function legacyCopy(text) {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.append(field);
+    field.select();
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
+    field.remove();
+    return copied;
+  }
+
   createMarqueeVisibility();
   if (!getCookiePreference()) showCookieBanner();
   void loadReviewSummary();
@@ -2784,7 +3543,11 @@
   void loadGalleryImages();
   startChatBackgroundPoll();
   updateWhatsAppVisibility();
-  window.setInterval(updateWhatsAppVisibility, 60 * 1000);
+  renderChatPresence();
+  window.setInterval(() => {
+    updateWhatsAppVisibility();
+    renderChatPresence();
+  }, 60 * 1000);
   void initializeBasket();
   initializeLanguage();
   const year = document.querySelector('[data-current-year]');

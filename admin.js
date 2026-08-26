@@ -917,6 +917,23 @@
     if (element) element.textContent = message;
   }
 
+  // Reveals the password, never stores or transmits it: the input type flips and
+  // that is all. aria-pressed carries the state, so a screen reader knows the
+  // field is currently readable on screen.
+  document.querySelectorAll('[data-password-toggle]').forEach((toggle) => {
+    const field = toggle.closest('.password-field')?.querySelector('input');
+    if (!field) return;
+    toggle.addEventListener('click', () => {
+      const shown = field.type === 'text';
+      field.type = shown ? 'password' : 'text';
+      toggle.setAttribute('aria-pressed', String(!shown));
+      toggle.setAttribute('aria-label', shown ? 'Shfaq fjalëkalimin' : 'Fshih fjalëkalimin');
+      // Typing should carry on where it left off, not jump to the end.
+      const caret = field.selectionStart;
+      field.focus();
+      if (caret !== null) field.setSelectionRange(caret, caret);
+    });
+  });
   loginForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const password = String(new FormData(loginForm).get('password') || '');

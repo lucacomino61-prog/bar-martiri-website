@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f4f0e8">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
     <link rel="icon" href="/favicon.ico" sizes="48x48">
     <link rel="icon" href="assets/optimized/favicon-96.png" type="image/png" sizes="96x96">
     <link rel="apple-touch-icon" href="assets/optimized/apple-touch-icon.png">
@@ -173,6 +173,9 @@
   </head>
   <body>
     <a class="skip-link" href="#main">Kalo te përmbajtja</a>
+    <!-- Decorative: the value is announced by nothing, because a reader who
+         cannot see it gains nothing from "37% of the page". -->
+    <div class="scroll-progress" data-scroll-progress aria-hidden="true"><span></span></div>
 
     <header class="site-header" aria-label="Kreu i faqes">
       <div class="header-bar">
@@ -508,6 +511,92 @@
         <div class="gallery-grid" data-gallery-grid></div>
       </section>
 
+      <!-- Native <details>, not a scripted accordion: it opens with no JavaScript,
+           it is keyboard- and screen-reader-correct for free, and the browser's
+           find-in-page can open a closed answer to reveal a match. -->
+      <section class="faq-section" id="faq" aria-labelledby="faq-title">
+        <div class="faq-intro">
+          <h2 id="faq-title">Pyetjet që na bëni më shpesh.</h2>
+          <p class="faq-note">
+            Nuk e gjete përgjigjen? Na shkruaj në chat ose telefono — përgjigjemi nga bari.
+          </p>
+        </div>
+        <div class="faq-list">
+          <details class="faq-item" name="faq">
+            <summary>
+              A duhet të rezervoj shezlong?
+              <svg class="faq-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </summary>
+            <p>
+              Në ditët e zakonshme jo, gjen vend edhe pa rezervim. Për fundjavat dhe gushtin
+              të këshillojmë të telefonosh një ditë para. Rezervimet i marrim vetëm me telefon.
+            </p>
+          </details>
+          <details class="faq-item" name="faq">
+            <summary>
+              Sa kushton një shezlong për një ditë?
+              <svg class="faq-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </summary>
+            <p>
+              Çmimi i ditës është ai që shfaqet te seksioni i shezloneve në këtë faqe, dhe
+              përfshin çadrën. E përditësojmë ne, prandaj çmimi në faqe është gjithmonë ai
+              që paguan në plazh.
+            </p>
+          </details>
+          <details class="faq-item" name="faq">
+            <summary>
+              A ka parkim, dhe a paguhet?
+              <svg class="faq-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </summary>
+            <p>
+              Po, parkimi është falas për klientët tanë, direkt para barit në Rrugën e
+              Pishave.
+            </p>
+          </details>
+          <details class="faq-item" name="faq">
+            <summary>
+              Si funksionon porosia te shezlongu?
+              <svg class="faq-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </summary>
+            <p>
+              Zgjedh nga menuja, shkruan sektorin, rreshtin dhe numrin e çadrës — janë të
+              shkruar në shtyllën e çadrës sate — dhe ta sjellim aty, zakonisht brenda 10
+              minutash. Paguhet në dorëzim, në vend.
+            </p>
+          </details>
+          <details class="faq-item" name="faq">
+            <summary>
+              A mund të paguaj me kartë ose online?
+              <svg class="faq-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </summary>
+            <p>
+              Porositë nga faqja paguhen në dorëzim. Faqja nuk pranon pagesa online dhe nuk
+              të kërkon kurrë të dhëna karte.
+            </p>
+          </details>
+          <details class="faq-item" name="faq">
+            <summary>
+              Deri në sa orë jeni hapur?
+              <svg class="faq-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </summary>
+            <p>
+              Çdo ditë nga 06:00 deri në 23:00, nga maji deri në shtator. Chat-in e lexojmë
+              brenda këtij orari.
+            </p>
+          </details>
+          <details class="faq-item" name="faq">
+            <summary>
+              A mund të vij me fëmijë?
+              <svg class="faq-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </summary>
+            <p>
+              Sigurisht. Deti këtu është i cekët për një distancë të gjatë, dhe akullorja e
+              freskët është pikërisht arsyeja pse shumica e familjeve ndalen te ne.
+            </p>
+          </details>
+        </div>
+      </section>
+
       <section class="closing-section" id="information" aria-labelledby="closing-title">
         <p class="eyebrow">Bar · Akullore · Spille</p>
         <h2 id="closing-title">Shihemi tek<br>Bar Martiri.</h2>
@@ -524,12 +613,19 @@
         <span>BAR MARTIRI · SPILLE · AKULLORE · KAFE · DET · </span>
       </div>
       <div class="footer-meta">
-        <p>© <span data-current-year></span> Bar Martiri</p>
+        <div class="footer-identity">
+          <p>© <span data-current-year></span> Bar Martiri</p>
+          <p class="footer-updated">
+            <span>Përditësuar më</span>
+            <time datetime="2026-08-26">26 gusht 2026</time>
+          </p>
+        </div>
         <nav class="footer-links" aria-label="Lidhje të tjera">
           <a href="https://www.instagram.com/barmartiri/" target="_blank" rel="noreferrer">Instagram</a>
           <a href="https://www.facebook.com/MartiriBeach/" target="_blank" rel="noreferrer">Facebook</a>
           <a href="https://www.tripadvisor.com/Restaurant_Review-g19102012-d34595569-Reviews-Bar_Martiri-Spille_Tirana_County.html" target="_blank" rel="noreferrer">Tripadvisor</a>
           <a href="/privacy">Privatësia dhe cookies</a>
+          <a href="/terms">Kushtet e përdorimit</a>
           <button type="button" data-cookie-settings>Menaxho cookies</button>
         </nav>
       </div>
@@ -690,6 +786,19 @@
             <div class="location-copy">
               <p class="eyebrow">Adresa</p>
               <h3>Bar Martiri<br>Rruga e Pishave, Spille<br>AL 2510, Shqipëri</h3>
+              <button
+                class="copy-button"
+                type="button"
+                data-copy="Bar Martiri, Rruga e Pishave, Spille, AL 2510, Shqipëri"
+              >
+                <svg class="copy-icon" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M9 9h10v10H9zM5 15V5h10"></path>
+                </svg>
+                <svg class="copy-done" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="m4 12.5 5 5L20 6.5"></path>
+                </svg>
+                <span data-copy-label>Kopjo adresën</span>
+              </button>
               <a
                 class="primary-link"
                 href="https://www.google.com/maps/search/?api=1&amp;query=Bar%20Martiri%2C%20Rruga%20e%20Pishave%20Spille%20AL%202510%2C%20Rruga%20e%20Pishave%2C%20Spille%2C%20Shqip%C3%ABri"
@@ -753,29 +862,101 @@
         aria-labelledby="chat-panel-title"
         hidden
       >
-        <header class="panel-header">
-          <div class="panel-title">
-            <p class="eyebrow">Shkruaji Bar Martiri</p>
-            <h2 id="chat-panel-title">Chat</h2>
+        <header class="panel-header chat-header">
+          <div class="chat-identity">
+            <span class="chat-mark" aria-hidden="true">BM</span>
+            <h2 id="chat-panel-title">Bar Martiri</h2>
           </div>
           <div class="panel-tools">
+            <div class="language-switcher panel-language-switcher" data-language-switcher>
+              <button type="button" class="language-toggle" data-language-toggle aria-haspopup="listbox" aria-expanded="false" aria-label="Ndrysho gjuhën">
+                <span class="language-flag" data-language-flag aria-hidden="true"></span>
+                <span data-language-code></span>
+                <svg class="language-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              <div class="language-menu" data-language-menu role="listbox" hidden>
+                <button type="button" role="option" data-language-switch="sq" aria-pressed="true">
+                  <span class="language-flag" aria-hidden="true">🇦🇱</span>Shqip
+                </button>
+                <button type="button" role="option" data-language-switch="it" aria-pressed="false">
+                  <span class="language-flag" aria-hidden="true">🇮🇹</span>Italiano
+                </button>
+                <button type="button" role="option" data-language-switch="en" aria-pressed="false">
+                  <span class="language-flag" aria-hidden="true">🇬🇧</span>English
+                </button>
+              </div>
+            </div>
             <button class="icon-button" type="button" data-panel-close aria-label="Mbyll chat-in">
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <path d="M18 6 6 18M6 6l12 12"></path>
               </svg>
             </button>
           </div>
+          <p class="chat-presence" data-chat-presence>
+            <span class="chat-presence-dot" aria-hidden="true"></span>
+            <span data-chat-presence-text></span>
+          </p>
         </header>
         <div class="chat-page">
-          <div class="chat-messages" data-chat-messages></div>
-          <p class="chat-empty" data-chat-empty>Na shkruaj një mesazh dhe do të përgjigjemi sa më shpejt.</p>
-          <input class="chat-name-input" data-chat-name-input type="text" maxlength="80" placeholder="Emri yt (opsionale)" autocomplete="name">
-          <form class="chat-composer" data-chat-form>
-            <input type="text" name="message" maxlength="1000" placeholder="Shkruaj një mesazh..." autocomplete="off" required>
-            <button class="chat-composer-send" type="submit" aria-label="Dërgo">
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M13 5l7 7-7 7"></path></svg>
+          <div class="chat-thread">
+            <div
+              class="chat-messages"
+              data-chat-messages
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions"
+              aria-label="Biseda me Bar Martiri"
+            ></div>
+            <div class="chat-intro" data-chat-empty>
+              <p class="chat-intro-lede">Na shkruaj. Përgjigjemi nga bari.</p>
+              <p class="chat-intro-note">
+                Për shezlone, çmime, orare ose çfarëdo tjetër. Mesazhi vjen te telefoni ynë.
+              </p>
+              <div class="chat-openers">
+                <button class="chat-opener" type="button" data-chat-opener>
+                  A ka shezlone të lira sot?
+                </button>
+                <button class="chat-opener" type="button" data-chat-opener>
+                  Sa kushton shezlongu për një ditë?
+                </button>
+                <button class="chat-opener" type="button" data-chat-opener>
+                  Deri në sa orë jeni hapur?
+                </button>
+              </div>
+              <label class="chat-name-field">
+                <span>Si të të thërrasim?</span>
+                <input
+                  class="chat-name-input"
+                  data-chat-name-input
+                  type="text"
+                  maxlength="80"
+                  placeholder="p.sh. Ana"
+                  autocomplete="name"
+                >
+              </label>
+            </div>
+            <button class="chat-jump" type="button" data-chat-jump hidden>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>
+              <span data-chat-jump-text></span>
             </button>
-          </form>
+          </div>
+          <div class="chat-foot">
+            <p class="chat-error" data-chat-error role="alert" hidden></p>
+            <form class="chat-composer" data-chat-form>
+              <textarea
+                data-chat-input
+                name="message"
+                rows="1"
+                maxlength="1000"
+                placeholder="Shkruaj një mesazh..."
+                autocomplete="off"
+                required
+              ></textarea>
+              <button class="chat-composer-send" type="submit" aria-label="Dërgo" disabled>
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M13 5l7 7-7 7"></path></svg>
+              </button>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -933,6 +1114,10 @@
         <path d="M9 10c0 3 2.5 5.5 5.5 5.5"></path>
       </svg>
     </a>
+
+    <button class="to-top" type="button" data-to-top aria-label="Kthehu lart" hidden>
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+    </button>
 
     <nav class="bottom-dock" data-bottom-dock aria-label="Navigimi kryesor">
       <button

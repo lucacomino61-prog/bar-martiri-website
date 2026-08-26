@@ -1519,3 +1519,56 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Password reveal ------------------------------------------------------- */
+
+.password-field {
+  position: relative;
+  display: block;
+}
+
+.password-field input {
+  width: 100%;
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.65;
+  transform: translateY(-50%);
+  transition: opacity 160ms ease;
+}
+
+.password-toggle:hover {
+  opacity: 1;
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.password-toggle .password-hide,
+.password-toggle[aria-pressed='true'] .password-show {
+  display: none;
+}
+
+.password-toggle[aria-pressed='true'] .password-hide {
+  display: block;
+}

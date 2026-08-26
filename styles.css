@@ -67,7 +67,7 @@
 }
 
 html {
-  color-scheme: light;
+  color-scheme: light dark;
   scroll-behavior: smooth;
   /* Every in-page anchor used to land underneath the fixed header, which is an
      88px box (92px under 640px). Clearing the whole edge band rather than just
@@ -1641,102 +1641,560 @@ body:has(.dock-panel.is-open) .scroll-edge {
   margin-left: auto;
 }
 
+/* ---------------------------------------------------------------------------
+   Chat
+
+   The one surface on this site where a stranger talks to a person, so it is
+   built as a thread with someone on the other end rather than as a form. Three
+   structural decisions carry it:
+
+   1. The panel does not scroll -- the thread does. Every other dock panel is
+      its own scroller with a sticky header; here that left the composer
+      floating mid-page with 380px of reserved nothing above it. So
+      .dock-panel--chat is a fixed-height flex column: header, thread, foot.
+   2. .chat-messages bottom-aligns a short thread (margin-top: auto on the
+      first child) the way every messaging app does, and collapses to zero when
+      it is empty so the invitation gets the whole box instead of being
+      stranded under a reserved void.
+   3. The composer clears the floating dock in the foot's own padding, and
+      script.js swaps that for the on-screen keyboard height while the keyboard
+      is up (see --chat-viewport).
+   --------------------------------------------------------------------------- */
+
+/* Doubled up deliberately. The <= 640px block near the end of this file resets
+   .dock-panel's padding to clear the dock, and at equal specificity the later
+   rule won -- so on a phone the panel kept 118px of its own bottom padding on
+   top of the foot's, and the composer floated 218px above the dock. Two classes
+   beat one from anywhere in the cascade. */
+.dock-panel.dock-panel--chat {
+  /* Bubbles across the 1240px content measure are unreadable; a thread wants a
+     letter's width, not a page's. */
+  --chat-width: 720px;
+  --chat-mark: 46px;
+  --chat-mark-gap: 12px;
+  /* script.js overwrites this with visualViewport.height while the on-screen
+     keyboard is open. The panel layer is position: fixed, which stays pinned to
+     the layout viewport, so without this the composer sits behind the keyboard. */
+  display: flex;
+  height: var(--chat-viewport, 100%);
+  flex-direction: column;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.dock-panel--chat .panel-header,
+.dock-panel--chat .chat-page {
+  width: min(100%, var(--chat-width));
+}
+
+/* Two rows, not one: the name and the tools share the top line and the presence
+   sentence gets the full width underneath. Nested under the name it read the
+   same on a desktop, but at 320px the language switcher left it an 85px column
+   -- "Bar Martiri" broke in half and the header grew to 153px of a 568px
+   screen. Its padding-left puts it back under the name either way.
+
+   Grid rather than flex-wrap. Wrapping is decided by the items' own widths, so
+   the identity simply took the whole first line and pushed the switcher and the
+   close button onto a second one. A minmax(0, 1fr) column has no such opinion:
+   the tools keep their width and the name fits whatever is left. */
+.dock-panel--chat .panel-header {
+  display: grid;
+  min-height: 0;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 14px;
+  padding: 18px 0 14px;
+  /* The shared panel header frosts itself because content scrolls underneath
+     it. Nothing scrolls under this one -- the thread is a sibling below it --
+     so the blur would be decoration and the ::after seam would be a fake edge.
+     The honest version of that effect lives on .chat-messages as a mask. */
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.dock-panel--chat .panel-header::after {
+  display: none;
+}
+
+/* Scales down to the narrow end rather than sitting at a 25px floor: with the
+   switcher on the row there is only so much left, and a name that shrinks reads
+   better than one that breaks in half. Where it still has to break, it breaks
+   into the site's own stacked BAR / MARTIRI lockup, which is no loss. */
+.dock-panel--chat .panel-header h2 {
+  margin: 0;
+  font-size: clamp(21px, 5.4vw, 31px);
+  letter-spacing: -0.012em;
+  line-height: 1.06;
+}
+
+.chat-identity {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--chat-mark-gap);
+}
+
+.dock-panel--chat .panel-tools {
+  flex: 0 0 auto;
+}
+
+/* A lettermark, not a stock avatar and not a glyph: 6px is the same corner the
+   icon buttons use, so the mark belongs to this site's geometry rather than to
+   chat-widget convention. */
+.chat-mark {
+  display: grid;
+  width: var(--chat-mark);
+  height: var(--chat-mark);
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--paper-strong);
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.005em;
+  line-height: 1;
+}
+
+.chat-presence {
+  display: flex;
+  grid-column: 1 / -1;
+  margin: 0;
+  /* Sits under the name rather than under the mark, at every width. */
+  padding-left: calc(var(--chat-mark) + var(--chat-mark-gap));
+  /* flex-start, not center: the sentence wraps to two lines on a narrow phone
+     and a centred dot then floats between them instead of marking the line it
+     belongs to. */
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--ink-soft-strong);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.chat-presence-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  /* optical centre of the first 12px/1.35 line */
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  /* The inset rim stops a 7px dot dissolving into paper; the halo only appears
+     when the bar is actually open. The words carry the state, so neither is
+     load-bearing on its own. */
+  box-shadow: inset 0 0 0 1px rgba(21, 21, 21, 0.16);
+}
+
+.chat-presence.is-open .chat-presence-dot {
+  background: var(--mint);
+  box-shadow:
+    inset 0 0 0 1px rgba(21, 21, 21, 0.16),
+    0 0 0 3px rgba(103, 191, 160, 0.24);
+}
+
 .chat-page {
   display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 12px;
-  padding-top: 16px;
+}
+
+.chat-thread {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 .chat-messages {
   display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 6px;
-  min-height: min(48svh, 380px);
-  padding-bottom: 12px;
+  padding: 2px 0 10px;
+  /* Messages dissolve at the top edge instead of being sliced by it. */
+  mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* html sets scroll-behavior: smooth and .dock-panel inherits it. A thread
+     that eases to the bottom on every four-second poll reads as drift, so
+     scrolling here is instant unless script.js asks for smooth explicitly. */
+  scroll-behavior: auto;
+  /* The dock panels are the page's own scroller and keep the platform bar. This
+     one is a scroller inside a page, sitting a few pixels off the bubbles, so a
+     full-width platform bar reads as a rule drawn down the thread. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* A brand new conversation has no thread to reserve room for: collapse, and let
+   .chat-intro have the whole box. */
+.chat-messages:empty {
+  flex: 0 0 auto;
+  padding: 0;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+/* Short threads sit on the composer, the way every messaging app does, rather
+   than hanging from the header. */
+.chat-messages > :first-child {
+  margin-top: auto;
+}
+
+.chat-day {
+  align-self: center;
+  margin: 18px 0 12px;
+  color: var(--ink-soft-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The time sits beside the bubble on its baseline, not on a line of its own
+   underneath it. Stacked, eight turns of conversation cost eight extra lines
+   and the stamps read as content; beside it they read as marginalia, which is
+   what they are. */
+.chat-row {
+  display: flex;
+  max-width: 92%;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.chat-row--customer {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chat-row--admin {
+  align-self: flex-start;
+}
+
+/* A run from one sender reads as one turn; the gap only opens when the other
+   side speaks. */
+.chat-row + .chat-row {
+  margin-top: 2px;
+}
+
+.chat-row.is-turn-start {
+  margin-top: 14px;
 }
 
 .chat-message-bubble {
-  max-width: 78%;
-  padding: 9px 13px;
-  border-radius: 16px;
-  font-size: 14px;
-  line-height: 1.4;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 14px 10px;
+  border-radius: 17px;
+  font-size: 15px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
-.chat-message-bubble--customer {
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
+.chat-row--customer .chat-message-bubble {
   background: var(--ink);
+  color: var(--paper-strong);
+}
+
+.chat-row--admin .chat-message-bubble {
+  border: 1px solid var(--line);
+  background: var(--paper-strong);
+  color: var(--ink);
+}
+
+/* Only the last bubble of a turn gets the tail, so a run of three reads as one
+   utterance with one point of origin. */
+.chat-row--customer.is-tail .chat-message-bubble {
+  border-bottom-right-radius: 5px;
+}
+
+.chat-row--admin.is-tail .chat-message-bubble {
+  border-bottom-left-radius: 5px;
+}
+
+.chat-row.is-pending .chat-message-bubble {
+  opacity: 0.5;
+}
+
+.chat-row.is-failed .chat-message-bubble {
+  background: var(--danger);
   color: var(--white);
 }
 
-.chat-message-bubble--admin {
-  align-self: flex-start;
-  border-bottom-left-radius: 4px;
-  background: var(--white);
-  border: 1px solid var(--line);
+.chat-meta {
+  display: flex;
+  margin: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 3px;
+  color: var(--ink-soft-strong);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.chat-empty {
-  padding: 24px 0;
-  color: var(--ink-soft);
-  font-size: 13px;
+.chat-tick {
+  width: 13px;
+  height: 13px;
+}
+
+.chat-retry {
+  flex: 0 0 auto;
+  padding: 2px 3px 4px;
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* An arriving message must never yank the reader away from what they were
+   re-reading, so the thread only auto-follows when it is already at the bottom.
+   This is the way back. */
+.chat-jump {
+  position: absolute;
+  z-index: 3;
+  bottom: 12px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px 8px 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper-strong);
+  box-shadow: 0 10px 26px var(--shadow-strong);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  transform: translateX(-50%);
+}
+
+.chat-jump svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Bottom-aligned, not centred: the invitation sits where the first message
+   would, right above the composer it is asking the visitor to use. Centring it
+   left a screen of paper above and below and read as a page still loading.
+
+   Bottom-aligned by auto margin, NOT justify-content: flex-end. On a 320px
+   phone in Italian this content is taller than the box, and flex-end overflows
+   past the *start* edge -- the invitation was drawing straight over the header,
+   with no way to scroll up to it. An auto margin resolves to zero once the free
+   space is gone, so the overflow goes the way the scrollbar does. */
+.chat-intro {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 0 22px;
+  /* Same fade the thread uses, at the other end: on a short phone this box
+     scrolls, and a hard cut through the name label read as a rendering fault
+     rather than as more content. The 20px ramp sits inside the bottom padding
+     when there is nothing to scroll, so it costs nothing then. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.chat-intro > :first-child {
+  margin-top: auto;
+}
+
+/* An empty chat is mostly paper on a desktop panel, and a 36px line left that
+   reading as a page that had not finished loading. At the site's own display
+   scale the emptiness reads as composition instead. */
+.chat-intro-lede {
+  max-width: 420px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(27px, 6.6vw, 44px);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.chat-intro-note {
+  max-width: 460px;
+  margin: -4px 0 0;
+  color: var(--ink-soft-strong);
+  font-size: 14px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+/* The blank page is the real failure mode of a business chat: people open it,
+   find they have nothing to type, and leave. These are the three questions
+   guests actually arrive with, and tapping one loads the composer instead of
+   sending -- the visitor still owns the message. */
+.chat-openers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.chat-opener {
+  padding: 9px 15px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13.5px;
+  line-height: 1.25;
+  text-align: left;
+  transition:
+    border-color 180ms var(--ease-standard),
+    background-color 180ms var(--ease-standard);
+}
+
+.chat-opener:hover {
+  border-color: var(--ink);
+  background: var(--paper-strong);
+}
+
+.chat-name-field {
+  display: flex;
+  max-width: 380px;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 6px;
+}
+
+.chat-name-field > span {
+  color: var(--ink-soft-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .chat-name-input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 11px 15px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--paper);
+  background: var(--paper-strong);
   font-size: 16px;
 }
 
 .chat-name-input:focus-visible {
+  border-color: var(--ink);
   outline: 3px solid var(--focus);
   outline-offset: 2px;
-  border-color: var(--ink);
+}
+
+.chat-foot {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 8px;
+  /* Clears the floating dock. script.js drops this to a plain gap while the
+     on-screen keyboard is up, because the dock is behind the keyboard then. */
+  padding: 10px 0 calc(var(--dock-height) + max(14px, env(safe-area-inset-bottom)) + 18px);
+}
+
+.dock-panel--chat.is-keyboard .chat-foot {
+  padding-bottom: 12px;
+}
+
+.chat-error {
+  margin: 0;
+  padding: 0 6px;
+  color: var(--danger);
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
 .chat-composer {
-  position: sticky;
-  bottom: calc(16px + env(safe-area-inset-bottom));
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
-  padding: 8px 8px 8px 18px;
+  padding: 6px 6px 6px 17px;
   border: 1px solid var(--line);
   border-radius: 26px;
-  background: var(--paper);
-  box-shadow: 0 12px 28px var(--shadow-soft);
+  background: var(--paper-strong);
+  box-shadow: 0 10px 26px var(--shadow-soft);
+  transition: border-color 180ms var(--ease-standard);
 }
 
-.chat-composer input {
-  flex: 1;
-  min-width: 0;
-  min-height: 44px;
-  border: none;
-  background: transparent;
-  font-size: 16px;
+.chat-composer:focus-within {
+  border-color: var(--ink);
 }
 
-.chat-composer input:focus-visible {
+/* The ring belongs to the whole composer, not the bare textarea, and only to a
+   real keyboard focus -- :focus-within alone would flash it on every tap. */
+.chat-composer:has(:focus-visible) {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
-  border-radius: 6px;
+}
+
+.chat-composer textarea {
+  min-width: 0;
+  min-height: 44px;
+  max-height: 132px;
+  flex: 1;
+  padding: 11px 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.35;
+  overflow-y: auto;
+  resize: none;
+}
+
+.chat-composer textarea:focus {
+  outline: none;
+}
+
+/* Chrome's default placeholder grey measures 4.44:1 on this paper -- under the
+   floor, and this is the field the whole panel exists to get someone to use. */
+.chat-composer textarea::placeholder,
+.chat-name-input::placeholder {
+  color: var(--ink-soft);
+  opacity: 1;
 }
 
 .chat-composer-send {
   display: grid;
-  flex: 0 0 auto;
   width: 44px;
   height: 44px;
+  flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
   background: var(--ink);
-  color: var(--white);
+  color: var(--paper-strong);
+  cursor: pointer;
+  transition:
+    background-color 180ms var(--ease-standard),
+    color 180ms var(--ease-standard);
+}
+
+.chat-composer-send:disabled {
+  background: var(--line);
+  color: var(--ink-soft);
+  cursor: default;
 }
 
 .chat-composer-send svg {
@@ -2818,16 +3276,17 @@ html.is-gated body {
 }
 
 /* Bubbles grow from the corner they belong to, so the message reads as coming
-   from its sender rather than from nowhere. */
-.chat-message-bubble--customer {
+   from its sender rather than from nowhere. The whole row animates, not just
+   the bubble, so the timestamp arrives with the message it belongs to. */
+.chat-row--customer {
   transform-origin: bottom right;
 }
 
-.chat-message-bubble--admin {
+.chat-row--admin {
   transform-origin: bottom left;
 }
 
-.chat-message-bubble.is-new {
+.chat-row.is-new {
   animation: bubble-in 240ms var(--ease-out) both;
 }
 
@@ -2906,6 +3365,22 @@ html.is-gated body {
 @media (max-width: 640px) {
   :root {
     --edge-height: 112px;
+  }
+
+  /* The switcher and the close button cost a fixed 121px of the top row, so the
+     mark gives back what it can rather than squeezing the name. */
+  .dock-panel.dock-panel--chat {
+    --chat-mark: 40px;
+    --chat-mark-gap: 10px;
+  }
+
+  .dock-panel--chat .panel-header {
+    gap: 4px 10px;
+    padding: 14px 0 12px;
+  }
+
+  .chat-mark {
+    font-size: 16px;
   }
 
   .site-header {
@@ -3434,5 +3909,527 @@ html.is-gated body {
   .flavor-story:not(.is-static) .flavor-card:nth-child(2) figcaption,
   .flavor-story:not(.is-static) .flavor-card:nth-child(4) figcaption {
     bottom: -68px;
+  }
+}
+
+/* ===========================================================================
+   FAQ
+   =========================================================================== */
+
+.faq-section {
+  display: grid;
+  width: min(100%, var(--content));
+  margin: 0 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: clamp(28px, 6vw, 96px);
+  padding: clamp(56px, 9vw, 110px) 0 clamp(40px, 7vw, 88px);
+  border-top: 1px solid var(--line);
+}
+
+.faq-intro h2 {
+  max-width: 12ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 4vw, 56px);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.faq-note {
+  max-width: 34ch;
+  margin: 18px 0 0;
+  color: var(--ink-soft-strong);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A hairline between answers, not a card each. Cards here would make seven
+   identical boxes of the page's structure, which is the thing to avoid. */
+.faq-item {
+  border-top: 1px solid var(--line);
+}
+
+.faq-item:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 0;
+  cursor: pointer;
+  font-size: clamp(16px, 1.5vw, 18px);
+  font-weight: 600;
+  line-height: 1.3;
+  list-style: none;
+  transition: color 180ms var(--ease-standard);
+}
+
+/* Safari still paints its own triangle without this. */
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary:hover {
+  color: var(--ink-soft-strong);
+}
+
+.faq-item summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.faq-chevron {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--ink-soft);
+  transition: transform 240ms var(--ease-out);
+}
+
+.faq-item[open] .faq-chevron {
+  transform: rotate(180deg);
+}
+
+.faq-item p {
+  max-width: 62ch;
+  margin: 0;
+  padding: 0 0 22px;
+  color: var(--ink-soft-strong);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.faq-item[open] p {
+  animation: faq-open 260ms var(--ease-out) both;
+}
+
+@keyframes faq-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (max-width: 860px) {
+  .faq-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .faq-intro h2 {
+    max-width: none;
+  }
+}
+
+/* ===========================================================================
+   Scroll progress, back to top, copy button
+   =========================================================================== */
+
+/* Above the header's own stacking so it is never buried by the scroll edge. */
+.scroll-progress {
+  position: fixed;
+  z-index: 60;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  pointer-events: none;
+}
+
+.scroll-progress > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--ink);
+  /* scaleX from a transform-origin, not a width: this runs on every scroll
+     frame and width would relayout the document each time. */
+  transform: scaleX(var(--scroll-progress, 0));
+  transform-origin: 0 50%;
+}
+
+.to-top {
+  position: fixed;
+  z-index: 45;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(var(--dock-height) + max(14px, env(safe-area-inset-bottom)) + 78px);
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid var(--glass-rim);
+  border-radius: 50%;
+  background: var(--dock-bg-strong);
+  color: var(--ink);
+  box-shadow: 0 12px 30px var(--shadow-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  cursor: pointer;
+  /* Same guard as the dock and the header: a position: fixed element carrying
+     backdrop-filter freezes in Safari at the scroll offset it first painted at. */
+  transform: translateZ(0);
+  transition:
+    opacity 220ms var(--ease-standard),
+    transform 240ms var(--ease-out);
+}
+
+.to-top[hidden] {
+  display: none;
+}
+
+.to-top.is-entering {
+  opacity: 0;
+  transform: translateZ(0) translateY(10px) scale(0.9);
+}
+
+.to-top svg {
+  width: 18px;
+  height: 18px;
+}
+
+.to-top:hover {
+  border-color: var(--line-strong);
+}
+
+.to-top:active {
+  transform: translateZ(0) scale(0.94);
+}
+
+/* The WhatsApp button owns the bottom-right corner during opening hours, so the
+   two never share it -- script.js stacks this one above it. */
+.to-top.is-stacked {
+  bottom: calc(var(--dock-height) + max(14px, env(safe-area-inset-bottom)) + 142px);
+}
+
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    border-color 180ms var(--ease-standard),
+    background-color 180ms var(--ease-standard),
+    color 180ms var(--ease-standard);
+}
+
+.copy-button:hover {
+  border-color: var(--ink);
+  background: var(--paper-strong);
+}
+
+.copy-button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.copy-button .copy-done,
+.copy-button.is-copied .copy-icon {
+  display: none;
+}
+
+.copy-button.is-copied .copy-done {
+  display: block;
+}
+
+.copy-button.is-copied {
+  border-color: var(--mint);
+  color: var(--ink);
+}
+
+/* ===========================================================================
+   Loading
+   =========================================================================== */
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-inline-end: 8px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: spin 720ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sweeps a highlight across the placeholder rather than pulsing its opacity: a
+   pulse reads as a broken element, a sweep reads as work in progress. */
+.is-loading-image {
+  background: linear-gradient(
+    100deg,
+    var(--line) 20%,
+    color-mix(in srgb, var(--paper-strong) 70%, var(--line)) 40%,
+    var(--line) 60%
+  );
+  background-size: 260% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+/* ===========================================================================
+   Footer date, 404
+   =========================================================================== */
+
+.footer-updated {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.error-content {
+  min-height: 62svh;
+}
+
+.error-code {
+  margin: 0 0 6px;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: clamp(56px, 12vw, 128px);
+  line-height: 0.9;
+}
+
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 28px;
+  padding: 26px 0 34px;
+}
+
+.error-other {
+  margin: 0 0 10px;
+  color: var(--ink-soft-strong);
+  font-size: 14px;
+}
+
+.error-other strong {
+  margin-inline-end: 6px;
+}
+
+/* ===========================================================================
+   Dark mode
+
+   System-driven only -- there is no toggle. The palette is a token swap, not a
+   second stylesheet: every surface on the site is already painted from these
+   nine or so variables, so the ink/paper pair inverting is enough to carry the
+   chat bubbles, the glass dock and the panels with it.
+
+   The flavour accents (mint, berry, lemon, wafer, sky, lavender) are brand
+   colours and are deliberately NOT swapped: they are mid-tone by construction
+   and read on either ground.
+   =========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14130f;
+    --paper-strong: #201e18;
+    --ink: #f2efe6;
+    --ink-soft: #9a9488;
+    --ink-soft-strong: #c6c1b4;
+    --line: #35332b;
+    --line-strong: #605c51;
+    /* --white is not "white" in this stylesheet, it is "the colour that sits on
+       --ink" -- 12 of its 14 uses are text on an ink background. Once ink is
+       cream, leaving this white makes every filled button cream-on-white, which
+       is how the 404's own call to action disappeared. It follows ink. */
+    --white: #14130f;
+
+    --dock-bg: rgba(32, 30, 24, 0.66);
+    --dock-bg-strong: rgba(32, 30, 24, 0.8);
+    --glass-rim: rgba(255, 255, 255, 0.12);
+    --scrim: rgba(0, 0, 0, 0.55);
+    --shadow-soft: rgba(0, 0, 0, 0.5);
+    --shadow-strong: rgba(0, 0, 0, 0.66);
+
+    /* #0d5182 disappears into a dark ground; this is the same hue lifted to
+       carry a 3:1 ring against --paper. */
+    --focus: #79b8ec;
+    /* and the same for the error red, which has to stay legible as text. */
+    --danger: #f08a8a;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  /* The one --white that is genuinely white: WhatsApp's green is a fixed brand
+     colour and its mark is drawn white on it in every scheme. */
+  .whatsapp-button {
+    color: #ffffff;
+  }
+
+  /* The ink tile carries the wordmark: on dark it has to be the light one, or
+     the letters vanish into it. */
+  .chat-mark {
+    background: var(--paper-strong);
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+
+  /* The [data-dark-surface] sections are ALREADY the dark ones -- they paint
+     themselves background: var(--ink) and sit lemon, sky and berry accents on
+     top, chosen to read against near-black. Inverting them to cream turned the
+     weather readings to 1.38:1 and the MET Norway credit to 1.15:1. They keep
+     the light palette so they keep being what they were, and the scrims over
+     photography get heavier rather than lighter. */
+  [data-dark-surface] {
+    --ink: #151515;
+    --white: #ffffff;
+    --paper: #f4f0e8;
+    --line: #d5d0c6;
+    --scrim: rgba(0, 0, 0, 0.68);
+  }
+
+  /* The brand-coloured sections are painted in fixed colours that do NOT invert:
+     sky stays sky, mint stays mint, milk stays milk. Swapping the global ink for
+     cream over them turned the closing section into cream-on-sky and made its
+     "Telefono tani" button a cream box with white text -- invisible.
+
+     So they carry the light palette locally. Re-declaring the tokens on the
+     container is what makes this one rule instead of a dozen: every descendant
+     already paints from var(--ink) / var(--white) / var(--line), so they all
+     resolve back to the light values without being named here. */
+  .visit-section,
+  .closing-section,
+  .basket-location-confirm {
+    --ink: #151515;
+    --ink-soft: #69665f;
+    --ink-soft-strong: #3a372f;
+    --line: #d5d0c6;
+    --line-strong: #9f9a91;
+    --paper: #f4f0e8;
+    --paper-strong: #fffdf8;
+    --white: #ffffff;
+    --focus: #0d5182;
+    color: var(--ink);
+  }
+
+  /* A white-hot image on a near-black page is the one thing that actually
+     hurts to look at at night. */
+  .gallery-grid img,
+  .hero-media img {
+    filter: brightness(0.88);
+  }
+}
+
+/* ===========================================================================
+   Print
+
+   The menu and the address are the only things anyone would ever print, so the
+   navigation, the panels and every fixed overlay come off the page and the FAQ
+   opens up.
+   =========================================================================== */
+
+@media print {
+  .site-header,
+  .bottom-dock,
+  .panel-layer,
+  .scroll-edge,
+  .whatsapp-button,
+  .to-top,
+  .scroll-progress,
+  .welcome-gate,
+  .cookie-banner,
+  .footer-marquee,
+  .copy-button,
+  .skip-link {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body {
+    font-size: 11pt;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  /* Every answer prints, whether or not it was open on screen. */
+  .faq-item p {
+    display: block !important;
+  }
+
+  .faq-chevron {
+    display: none;
+  }
+
+  .faq-section {
+    display: block;
+    border-top: 0;
+    padding: 0;
+  }
+
+  /* A printed link is a dead end unless it says where it went -- but only for
+     real destinations, not for in-page anchors or javascript: handlers. */
+  a[href^="http"]::after,
+  a[href^="tel:"]::after {
+    content: ' (' attr(href) ')';
+    font-size: 9pt;
+    word-break: break-all;
+  }
+
+  section,
+  .faq-item {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+}
+
+/* The footer meta row is a two-item flex: the identity on the left, the links on
+   the right. The review date is a second fact about the site, not a third
+   column, so it stacks under the copyright rather than splitting the row. */
+.footer-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 640px) {
+  .footer-meta {
+    flex-direction: column;
+    gap: 18px;
   }
 }

@@ -35,7 +35,25 @@
         <form data-login-form>
           <label>
             Fjalëkalimi
-            <input name="password" type="password" autocomplete="current-password" required>
+            <span class="password-field">
+              <input name="password" type="password" autocomplete="current-password" required>
+              <button
+                class="password-toggle"
+                type="button"
+                data-password-toggle
+                aria-pressed="false"
+                aria-label="Shfaq fjalëkalimin"
+              >
+                <svg class="password-show" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"></path>
+                  <circle cx="12" cy="12" r="2.6"></circle>
+                </svg>
+                <svg class="password-hide" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M2 12s3.6-6 10-6c1.7 0 3.2.4 4.5 1M22 12s-3.6 6-10 6c-1.7 0-3.2-.4-4.5-1"></path>
+                  <path d="M4 4l16 16"></path>
+                </svg>
+              </button>
+            </span>
           </label>
           <p class="form-error" data-login-error role="alert"></p>
           <button class="primary-button" type="submit">Hyr në panel</button>
