@@ -1337,11 +1337,19 @@ body:has(.dock-panel.is-open) .scroll-edge {
   position: fixed;
   z-index: 50;
   bottom: max(14px, env(safe-area-inset-bottom));
-  left: 50%;
-  display: grid;
-  width: min(330px, calc(100% - 28px));
+  /* Centred with auto margins, NOT left: 50% + translateX(-50%). With a left
+     offset and no right, shrink-to-fit only offers the space between the 50%
+     mark and the viewport edge -- which squeezed the selected pill's label down
+     to a third of its width. Spanning 0 to 0 offers the real width. */
+  left: 0;
+  right: 0;
+  display: flex;
+  width: fit-content;
+  max-width: calc(100% - 28px);
   height: var(--dock-height);
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-inline: auto;
+  align-items: stretch;
+  justify-content: center;
   gap: 2px;
   padding: 7px;
   border: 1px solid var(--glass-rim);
@@ -1353,35 +1361,52 @@ body:has(.dock-panel.is-open) .scroll-edge {
     inset 0 -1px 0 rgba(255, 255, 255, 0.35);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  transform: translateX(-50%);
+  /* Keeps its own compositing layer now that translateX is gone: this is a
+     position: fixed element carrying backdrop-filter, which Safari otherwise
+     freezes at the scroll position it first painted at. Same guard as the
+     site header. */
+  transform: translateZ(0);
+  /* width is deliberately absent: it is content-driven now, so it follows the
+     selected pill's own expansion. Transitioning it too would animate the same
+     change twice, at two different speeds. */
   transition:
-    width 380ms var(--ease-out),
     height 380ms var(--ease-out),
     border-radius 380ms var(--ease-out),
     background-color 380ms var(--ease-out),
-    transform 260ms var(--ease-out),
     opacity 260ms var(--ease-out);
 }
 
 .bottom-dock.is-compact {
-  width: min(260px, calc(100% - 40px));
   height: var(--dock-compact-height);
   border-radius: 18px;
   background: var(--dock-bg-strong);
 }
 
+/* Mail's category row: the selected item carries its label inline and every
+   other one collapses to its icon. The label track is minmax(0, 0fr) when
+   inactive and minmax(0, 1fr) when selected -- interpolating between those is
+   the way to animate a box to its content width, which plain width: auto cannot
+   do. The minmax(0, ...) matters: an fr track's floor is min-content by
+   default, so without it the label would never collapse past its own text.
+
+   This is a tap, not a scroll, so a layout animation is affordable here in a
+   way it is not on the scroll edge. */
 .dock-action {
   position: relative;
-  display: flex;
+  display: grid;
   min-width: 0;
+  grid-template-columns: auto minmax(0, 0fr);
   align-items: center;
   justify-content: center;
-  padding: 0;
+  gap: 0;
+  padding: 0 13px;
   border-radius: 15px;
   background: transparent;
   color: var(--ink-soft-strong);
   cursor: pointer;
   transition:
+    grid-template-columns 420ms var(--ease-out),
+    gap 420ms var(--ease-out),
     background-color 220ms var(--ease-standard),
     color 220ms var(--ease-standard);
 }
@@ -1393,14 +1418,19 @@ body:has(.dock-panel.is-open) .scroll-edge {
 }
 
 .dock-action.is-active {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
   background: var(--ink);
   color: var(--white);
 }
 
+/* Anchored to the icon rather than the pill: the pill's width changes when it
+   is selected, and a percentage would slide the badge across the label. */
 .dock-badge {
   position: absolute;
-  top: 4px;
-  right: 16%;
+  top: 6px;
+  right: auto;
+  left: 24px;
   display: flex;
   min-width: 14px;
   height: 14px;
@@ -1420,40 +1450,57 @@ body:has(.dock-panel.is-open) .scroll-edge {
   color: var(--ink);
 }
 
+/* Was a floating tooltip on hover, which a phone can never show. It is now the
+   label itself, sitting in the second grid track. Inactive items are icon-only
+   by design -- every button still carries its own aria-label, so nothing is
+   lost to a screen reader. */
 .dock-action::after {
-  position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  padding: 6px 9px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--dock-bg-strong);
-  box-shadow: 0 8px 22px var(--shadow-soft);
-  color: var(--ink);
+  position: static;
+  overflow: hidden;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
   content: attr(data-dock-label);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.02em;
   line-height: 1;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, 5px);
-  transition:
-    opacity 160ms var(--ease-standard),
-    transform 220ms var(--ease-out);
+  text-align: left;
+  text-transform: uppercase;
+  transform: none;
+  /* Fades a touch faster than the track opens, so the text is never caught
+     mid-clip while the pill is still growing. */
+  transition: opacity 200ms var(--ease-standard) 60ms;
   white-space: nowrap;
 }
 
-.dock-action:is(:hover, :focus-visible, :active)::after {
+.dock-action.is-active::after {
   opacity: 1;
-  transform: translate(-50%, 0);
 }
 
-/* Touch has no hover, so on touch devices the label rides with the active
-   state instead of being unreachable. */
-@media (hover: none) {
-  .dock-action.is-active::after {
-    opacity: 1;
-    transform: translate(-50%, 0);
+/* Below ~360px the longest label (Italian 'Carrello') stops fitting the row at
+   full size. Shrinking the type and the padding keeps the whole word, which is
+   worth more than keeping the size and clipping it. */
+@media (max-width: 360px) {
+  .bottom-dock {
+    gap: 1px;
+  }
+
+  .dock-action {
+    padding: 0 9px;
+  }
+
+  .dock-action.is-active {
+    gap: 6px;
+  }
+
+  .dock-action::after {
+    font-size: 10px;
   }
 }
 
