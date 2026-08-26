@@ -668,21 +668,49 @@ body:has(.dock-panel.is-open) .scroll-edge {
   content: '•';
 }
 
-.hero-menu-link {
+/* The two hero calls to action are one component in two weights. They used to
+   be different objects entirely -- a 48px underlined text button carrying a 24px
+   top margin, next to a 44px filled pill -- so they sat 10px out of line with
+   each other and read as unrelated. The margin now belongs to the row, so both
+   sit on the same baseline, and only the fill separates primary from secondary.
+
+   Generalised out of the hero once the closing section wanted the same pair. */
+.pill-button {
   display: inline-flex;
-  min-height: 48px;
-  margin-top: 24px;
+  min-height: 46px;
   align-items: center;
-  gap: 12px;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px solid var(--ink);
-  background: transparent;
-  color: var(--ink);
+  gap: 10px;
+  padding: 0 22px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper-strong);
   font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
   text-transform: uppercase;
   cursor: pointer;
+  transition:
+    background-color 160ms var(--ease-standard),
+    border-color 160ms var(--ease-standard),
+    color 160ms var(--ease-standard);
+}
+
+.pill-button:hover {
+  border-color: var(--chocolate);
+  background: var(--chocolate);
+}
+
+.pill-button--quiet {
+  background: transparent;
+  color: var(--ink);
+}
+
+.pill-button--quiet:hover {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper-strong);
 }
 
 .flavor-story {
@@ -2966,30 +2994,15 @@ body:has(.dock-panel.is-open) .scroll-edge {
 
 .hero-actions {
   display: flex;
+  margin-top: 24px;
   flex-wrap: wrap;
   align-items: center;
-  gap: clamp(16px, 3vw, 28px);
+  gap: clamp(12px, 2vw, 18px);
 }
 
-.hero-call-link {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  padding: 0 20px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper-strong);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-decoration: none;
-  text-transform: uppercase;
-  transition: background-color 160ms var(--ease-standard);
-}
 
-.hero-call-link:hover {
-  background: var(--chocolate);
-}
+
+
 
 .visit-call {
   display: inline-flex;
@@ -3297,18 +3310,6 @@ html.is-gated body {
   }
 }
 
-/* The one genuinely high-emotion moment in the app, and the only place a longer
-   beat is earned. */
-.basket-status {
-  animation: status-in 320ms var(--ease-out) both;
-}
-
-@keyframes status-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-}
 
 @keyframes marquee {
   to {
@@ -3432,7 +3433,7 @@ html.is-gated body {
     padding-top: 14px;
   }
 
-  .hero-menu-link {
+  .hero-actions {
     margin-top: 14px;
   }
 
@@ -4432,4 +4433,508 @@ html.is-gated body {
     flex-direction: column;
     gap: 18px;
   }
+}
+
+/* ===========================================================================
+   Boot screen
+
+   The site paints in about 245ms, so this is not covering a wait -- it is a
+   greeting, and it has to get out of the way fast enough that it never becomes
+   one. Three rules keep it honest:
+
+   1. It never locks scrolling and it is `inert`, so it cannot trap anyone.
+   2. `boot-failsafe` removes it at 2.6s through CSS alone. If script.js never
+      runs, the site still opens.
+   3. script.js shows it once per tab (sessionStorage) and dismisses it the
+      moment the page is ready, so a language switch does not replay it.
+   =========================================================================== */
+
+.boot {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  /* The last line is the safety net, not the effect: opacity and visibility
+     land on the same values script.js sets, so whichever happens first the end
+     state is identical. */
+  animation: boot-failsafe 400ms var(--ease-out) 2600ms both;
+}
+
+/* Nothing to dismiss if the boot screen was never armed. */
+.boot:not(.is-armed) {
+  display: none;
+}
+
+.boot.is-done {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 420ms var(--ease-out),
+    visibility 0s linear 420ms;
+}
+
+@keyframes boot-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.boot-stage {
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  padding-bottom: 6vh;
+}
+
+.boot-cone {
+  width: clamp(72px, 16vw, 104px);
+  height: auto;
+  color: var(--ink);
+}
+
+.boot-waffle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linejoin: round;
+  animation: boot-cone-in 460ms var(--ease-out) both;
+}
+
+.boot-waffle-lines {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.32;
+  animation: boot-cone-in 460ms var(--ease-out) 60ms both;
+}
+
+/* The scoops land one at a time, each from a little higher than the last, so
+   it reads as being built rather than as three shapes fading in together. */
+.boot-scoop {
+  transform-origin: 60px 60px;
+  animation: boot-scoop-in 520ms var(--ease-out) both;
+}
+
+.boot-scoop--1 {
+  fill: var(--wafer);
+  animation-delay: 200ms;
+}
+
+.boot-scoop--2 {
+  fill: var(--berry);
+  animation-delay: 320ms;
+}
+
+.boot-scoop--3 {
+  fill: var(--milk);
+  stroke: var(--ink);
+  stroke-width: 3;
+  animation-delay: 440ms;
+}
+
+@keyframes boot-cone-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes boot-scoop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-26px) scale(0.6);
+  }
+  70% {
+    transform: translateY(2px) scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.boot-wordmark {
+  display: grid;
+  margin: 0;
+  justify-items: center;
+  line-height: 1;
+  animation: boot-cone-in 460ms var(--ease-out) 300ms both;
+}
+
+.boot-wordmark span {
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.boot-wordmark strong {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 5vw, 34px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.boot-bar {
+  width: 96px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.boot-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  animation: boot-fill 900ms var(--ease-standard) 120ms both;
+}
+
+@keyframes boot-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ===========================================================================
+   "Bar Martiri is typing"
+   =========================================================================== */
+
+.chat-row--typing .chat-message-bubble {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 10px 16px;
+  animation: bubble-in 240ms var(--ease-out) both;
+}
+
+.chat-typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-typing-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  /* Staggered rather than a single pulse on the group: three dots breathing in
+     sequence is what reads as someone composing a sentence. */
+  animation: chat-typing 1200ms ease-in-out infinite;
+}
+
+.chat-typing-dots i:nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.chat-typing-dots i:nth-child(3) {
+  animation-delay: 320ms;
+}
+
+@keyframes chat-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.32;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* ===========================================================================
+   A bit more play
+
+   Restrained on purpose: the site's character is editorial, so the personality
+   goes into how things RESPOND, not into decoration sitting on the page.
+   =========================================================================== */
+
+/* The dock's :active dip is deliberately left alone. It is documented earlier
+   in this file as barely-there because the dock is the whole navigation and is
+   tapped constantly -- springing it would read as lag on the one control that
+   can least afford it. The play goes on BECOMING selected instead, which
+   happens once per navigation rather than on every touch. */
+.dock-action.is-active svg {
+  animation: dock-pop 420ms var(--ease-out);
+}
+
+@keyframes dock-pop {
+  0% {
+    transform: scale(0.8);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Gallery photographs lift and straighten a degree, like a print being picked
+   up off a table. Only on devices with a real pointer -- on a phone this would
+   fire on scroll. */
+@media (hover: hover) and (pointer: fine) {
+  .gallery-item {
+    transition:
+      transform 420ms var(--ease-out),
+      box-shadow 420ms var(--ease-out);
+  }
+
+  .gallery-item:hover {
+    box-shadow: 0 22px 48px var(--shadow-strong);
+    transform: translateY(-6px) rotate(-0.6deg);
+  }
+
+  .chat-opener {
+    transition:
+      transform 220ms var(--ease-out),
+      border-color 180ms var(--ease-standard),
+      background-color 180ms var(--ease-standard);
+  }
+
+  .chat-opener:hover {
+    transform: translateY(-2px);
+  }
+
+  .faq-item summary:hover .faq-chevron {
+    transform: translateY(2px);
+  }
+
+  .faq-item[open] summary:hover .faq-chevron {
+    transform: rotate(180deg) translateY(2px);
+  }
+}
+
+/* The order landing is the one genuinely high-emotion moment in the product, so
+   it gets the one genuinely expressive beat: the confirmation swings in past
+   its resting angle instead of fading up. */
+.basket-status {
+  animation: status-land 620ms var(--ease-out) both;
+}
+
+@keyframes status-land {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94) rotate(-1.4deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.02) rotate(0.6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+
+/* prefers-reduced-motion is handled by the global block near the end of this
+   file, which clamps every duration to 0.01ms -- these degrade to their end
+   state rather than to nothing. The boot screen still needs its own opt-out,
+   because a curtain that never animates out would simply stay. */
+@media (prefers-reduced-motion: reduce) {
+  .boot {
+    animation: boot-failsafe 1ms linear 200ms both;
+  }
+}
+
+/* ===========================================================================
+   The answer arriving
+
+   Pending -> confirmed is the only moment in this product where a person is
+   waiting on another person. The words leave upward before the new ones drop
+   in, so the change reads as an answer rather than as a correction, and the
+   card takes the colour of the outcome.
+   =========================================================================== */
+
+.basket-status-headline,
+.basket-status-detail {
+  transition:
+    opacity 190ms var(--ease-standard),
+    transform 190ms var(--ease-standard);
+}
+
+.basket-status.is-swapping :is(.basket-status-headline, .basket-status-detail) {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* A drawn mark, not a coloured left border: a 2px accent rail on an alert card
+   is the exact pattern the craft floor bans, and the outcome deserves a symbol
+   anyway. The stroke draws itself in, which is the one place that idiom is
+   honest -- the mark IS the state, not decoration standing next to it. */
+.status-mark {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.basket-status[data-order-status='pending'] .status-mark {
+  display: none;
+}
+
+.basket-status[data-order-status='confirmed'] .status-mark {
+  /* --mint is a fill colour, not a stroke colour: at 1.9:1 on paper a 2.4px
+     line in it barely reads. This is the same hue taken down to carry. */
+  color: #2f8f6d;
+}
+
+.basket-status[data-order-status='cancelled'] .status-mark {
+  color: var(--danger);
+}
+
+.basket-status:not([data-order-status='confirmed']) .status-mark-tick,
+.basket-status:not([data-order-status='cancelled']) .status-mark-cross {
+  display: none;
+}
+
+/* The ring draws first, then the mark inside it. pathLength normalises every
+   path to 1 in the markup, so a single dash pair drives a circle, a tick and a
+   cross of three different real lengths. */
+.status-mark circle,
+.status-mark path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.basket-status.is-settling .status-mark circle {
+  animation: mark-draw 460ms var(--ease-out) both;
+}
+
+.basket-status.is-settling .status-mark path {
+  animation: mark-draw 320ms var(--ease-out) 240ms both;
+}
+
+@keyframes mark-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* One beat on the settle, and only on the words -- the card itself holds still
+   so the rule can draw attention without the layout moving. */
+.basket-status.is-settling .basket-status-headline {
+  animation: status-answer 520ms var(--ease-out) both;
+}
+
+@keyframes status-answer {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  70% {
+    transform: translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===========================================================================
+   Button icons
+
+   One drawn set, one stroke weight, inheriting the global
+   `svg { stroke: currentColor; stroke-width: 1.8 }` so every icon on the site
+   is the same object at a different size. They replace the unicode arrows that
+   used to stand in for an icon system.
+
+   Placement follows the component, not a rule of thumb: centred buttons lead
+   with the icon, and .text-link / .primary-link are justify-content:
+   space-between rows that were already built to carry a trailing mark, so the
+   icon goes where the arrow was.
+   =========================================================================== */
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+/* These are <button>, which is inline-block by default -- without a flex
+   context the icon would sit on the text baseline and drag the line box. */
+.secondary-button,
+.primary-button,
+.cookie-button,
+[data-cookie-settings],
+.welcome-terms {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+/* 11px type next to a 16px icon reads as a badge with a label stuck on it. */
+.cookie-button .btn-icon,
+[data-cookie-settings] .btn-icon,
+.welcome-terms .btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* The footer and info-panel cookie controls are quiet text links, so their icon
+   inherits the muted colour rather than punching through it. */
+[data-cookie-settings] .btn-icon {
+  opacity: 0.7;
+}
+
+.reservation-phone .btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* The label is the thing being read; the icon is the mark beside it. Dropping
+   the trailing icon a hair below cap height stops it from looking like a
+   capital letter in the middle of an uppercase word. */
+.text-link .btn-icon,
+.primary-link .btn-icon {
+  width: 15px;
+  height: 15px;
+}
+
+/* The two social links carry their mark inside the <strong>, so it needs to sit
+   on the text rather than on the row. */
+.info-links strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-links .btn-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* The footer links are 12px uppercase, so they take the small icon and a tight
+   gap -- at 16px the mark would outweigh the word it labels. */
+.footer-links a,
+.footer-links button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.footer-links .btn-icon {
+  width: 13px;
+  height: 13px;
+  opacity: 0.75;
+}
+
+.reservation-phone .btn-icon {
+  width: 18px;
+  height: 18px;
 }

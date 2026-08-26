@@ -676,6 +676,23 @@
     return normalizeChatMessage(data);
   }
 
+  // Fire-and-forget: a dropped typing ping is worth nothing to retry, and it
+  // must never delay the keystroke that triggered it.
+  async function setAdminTyping(conversationId) {
+    if (!client) return;
+    await client
+      .from('chat_conversations')
+      .update({ admin_typing_at: new Date().toISOString() })
+      .eq('id', conversationId);
+  }
+
+  async function clearAdminTyping(conversationId) {
+    if (!client) return;
+    await client
+      .from('chat_conversations')
+      .update({ admin_typing_at: null })
+      .eq('id', conversationId);
+  }
   async function markConversationReadByAdmin(conversationId) {
     if (!client) return;
     const { error } = await client
@@ -726,6 +743,8 @@
     listChatConversations,
     listChatMessages,
     sendAdminChatMessage,
+    setAdminTyping,
+    clearAdminTyping,
     markConversationReadByAdmin,
     saveAdminPushSubscription,
   });

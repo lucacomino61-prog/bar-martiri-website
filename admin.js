@@ -630,12 +630,33 @@
       if (submitButton) submitButton.disabled = true;
       await store.sendAdminChatMessage(activeConversationId, body);
       textarea.value = '';
+      // The message IS the answer to the dots, so they go now rather than
+      // waiting out the eight-second freshness window on the customer side.
+      lastTypingPingAt = 0;
+      void store.clearAdminTyping(activeConversationId).catch(() => {});
       await loadChatThread(activeConversationId);
     } catch (error) {
       if (chatReplyError) chatReplyError.textContent = error.message || 'Mesazhi nuk u dërgua.';
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
+  });
+
+  // Throttled to one write every three seconds against an eight-second
+  // freshness window on the read side, so the dots stay lit through normal
+  // typing without turning every keystroke into a database round trip.
+  let lastTypingPingAt = 0;
+  const TYPING_PING_INTERVAL = 3000;
+
+  chatReplyForm?.querySelector('textarea[name="body"]')?.addEventListener('input', (event) => {
+    if (!activeConversationId || !event.target.value.trim()) return;
+    const now = Date.now();
+    if (now - lastTypingPingAt < TYPING_PING_INTERVAL) return;
+    lastTypingPingAt = now;
+    // Never awaited and never surfaced: this column may not exist yet on a
+    // database that has not run the latest setup.sql, and a chat that works
+    // without the dots is better than a reply box that throws.
+    void store.setAdminTyping(activeConversationId).catch(() => {});
   });
 
   chatReplyForm?.querySelector('textarea[name="body"]')?.addEventListener('keydown', (event) => {

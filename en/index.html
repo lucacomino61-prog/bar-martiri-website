@@ -173,6 +173,25 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <!-- aria-hidden and inert: it is a curtain, not content, and a screen
+         reader should be reading the page underneath it from the first frame.
+         It never locks scrolling, and styles.css gives it a keyframe that
+         removes it at 2.6s no matter what, so a JavaScript failure can never
+         leave a visitor staring at a cone they cannot get past. -->
+    <div class="boot" data-boot aria-hidden="true" inert>
+      <div class="boot-stage">
+        <svg class="boot-cone" viewBox="0 0 120 150" aria-hidden="true">
+          <circle class="boot-scoop boot-scoop--3" cx="60" cy="38" r="24"></circle>
+          <circle class="boot-scoop boot-scoop--2" cx="42" cy="58" r="24"></circle>
+          <circle class="boot-scoop boot-scoop--1" cx="78" cy="58" r="24"></circle>
+          <path class="boot-waffle" d="M32 74h56l-24 64a4 4 0 0 1-8 0L32 74Z"></path>
+          <path class="boot-waffle-lines" d="M40 88h40M46 102h28M52 116h16"></path>
+        </svg>
+        <p class="boot-wordmark"><span>Bar</span><strong>Martiri</strong></p>
+        <div class="boot-bar"><span></span></div>
+      </div>
+    </div>
+
     <a class="skip-link" href="/en/#main">Skip to content</a>
     <!-- Decorative: the value is announced by nothing, because a reader who
          cannot see it gains nothing from "37% of the page". -->
@@ -232,10 +251,10 @@
             <span>Crisp cone</span>
           </div>
           <div class="hero-actions">
-            <button class="hero-menu-link" type="button" data-hero-menu>
-              View the menu <span aria-hidden="true">↗</span>
+            <button class="pill-button pill-button--quiet" type="button" data-hero-menu>
+              <svg class="btn-icon" aria-hidden="true"><use href="#icon-menu"></use></svg>View the menu
             </button>
-            <a class="hero-call-link" href="tel:+355696116063">Call now</a>
+            <a class="pill-button" href="tel:+355696116063"><svg class="btn-icon" aria-hidden="true"><use href="#icon-phone"></use></svg>Call now</a>
           </div>
           <figure class="hero-figure" data-hero-photo hidden></figure>
         </div>
@@ -328,7 +347,7 @@
             <div>
               <strong>Sunbeds by the sea</strong>
               <p>Book your spot for a relaxing day in Spille.</p>
-              <a class="text-link" href="tel:+355696116063">Call now</a>
+              <a class="text-link" href="tel:+355696116063">Call now<svg class="btn-icon" aria-hidden="true"><use href="#icon-phone"></use></svg></a>
               <p class="service-price" data-sunbed-price hidden></p>
             </div>
           </li>
@@ -387,44 +406,44 @@
             <span class="weather-ticker-set">
               <strong>SPILLE SOT</strong>
               <span class="ticker-reading ticker-condition">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-sun" data-ticker-condition-use></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-sun" data-ticker-condition-use></use></svg>
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-thermometer"></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-thermometer"></use></svg>
                 <b data-ticker-temp>--</b>°C
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-sun"></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-sun"></use></svg>
                 <b data-ticker-uv>--</b>
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-wind"></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-wind"></use></svg>
                 <b data-ticker-wind>--</b><small>km/h</small>
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon ticker-icon--sunset"><use href="/en/#weather-icon-sunset"></use></svg>
+                <svg class="ticker-icon ticker-icon--sunset"><use href="#weather-icon-sunset"></use></svg>
                 <b data-ticker-sunset>--:--</b>
               </span>
             </span>
             <span class="weather-ticker-set">
               <strong>SPILLE SOT</strong>
               <span class="ticker-reading ticker-condition">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-sun" data-ticker-condition-use></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-sun" data-ticker-condition-use></use></svg>
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-thermometer"></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-thermometer"></use></svg>
                 <b data-ticker-temp>--</b>°C
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-sun"></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-sun"></use></svg>
                 <b data-ticker-uv>--</b>
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon"><use href="/en/#weather-icon-wind"></use></svg>
+                <svg class="ticker-icon"><use href="#weather-icon-wind"></use></svg>
                 <b data-ticker-wind>--</b><small>km/h</small>
               </span>
               <span class="ticker-reading">
-                <svg class="ticker-icon ticker-icon--sunset"><use href="/en/#weather-icon-sunset"></use></svg>
+                <svg class="ticker-icon ticker-icon--sunset"><use href="#weather-icon-sunset"></use></svg>
                 <b data-ticker-sunset>--:--</b>
               </span>
             </span>
@@ -451,7 +470,7 @@
             <dt>Season</dt>
             <dd><span>May–September</span></dd>
           </dl>
-          <a class="primary-link visit-call" href="tel:+355696116063">Call now</a>
+          <a class="primary-link visit-call" href="tel:+355696116063">Call now<svg class="btn-icon" aria-hidden="true"><use href="#icon-phone"></use></svg></a>
           <a
             class="text-link"
             href="https://www.google.com/maps/search/?api=1&amp;query=Bar%20Martiri%2C%20Rruga%20e%20Pishave%20Spille%20AL%202510%2C%20Rruga%20e%20Pishave%2C%20Spille%2C%20Shqip%C3%ABri"
@@ -459,7 +478,7 @@
             rel="noreferrer"
           >
             Open map
-            <span aria-hidden="true">↗</span>
+           <svg class="btn-icon" aria-hidden="true"><use href="#icon-arrow-out"></use></svg>
           </a>
         </div>
       </section>
@@ -476,7 +495,11 @@
             rel="noreferrer"
           >
             See all on Google
-            <span aria-hidden="true">↗</span>
+           <svg class="btn-icon" aria-hidden="true"><use href="#icon-arrow-out"></use></svg>
+          </a>
+          <a class="text-link" href="https://www.tripadvisor.com/Restaurant_Review-g19102012-d34595569-Reviews-Bar_Martiri-Spille_Tirana_County.html" target="_blank" rel="noreferrer">
+            Leave a review on Tripadvisor
+           <svg class="btn-icon" aria-hidden="true"><use href="#icon-tripadvisor"></use></svg>
           </a>
         </div>
         <div class="reviews-list">
@@ -591,7 +614,8 @@
         <h2 id="closing-title">See you at<br>Bar Martiri.</h2>
         <p class="closing-note">Ice cream, coffee and cold drinks, every day from 06:00 to 23:00, May–September.</p>
         <div class="closing-actions">
-          <a class="primary-link" href="tel:+355696116063">Call now</a>
+          <a class="pill-button pill-button--quiet" href="https://www.instagram.com/barmartiri/" target="_blank" rel="noreferrer"><svg class="btn-icon" aria-hidden="true"><use href="#icon-instagram"></use></svg>Follow us on Instagram</a>
+          <a class="pill-button" href="tel:+355696116063"><svg class="btn-icon" aria-hidden="true"><use href="#icon-phone"></use></svg>Call now</a>
         </div>
       </section>
     </main>
@@ -610,17 +634,68 @@
           </p>
         </div>
         <nav class="footer-links" aria-label="Other links">
-          <a href="https://www.instagram.com/barmartiri/" target="_blank" rel="noreferrer">Instagram</a>
-          <a href="https://www.facebook.com/MartiriBeach/" target="_blank" rel="noreferrer">Facebook</a>
-          <a href="https://www.tripadvisor.com/Restaurant_Review-g19102012-d34595569-Reviews-Bar_Martiri-Spille_Tirana_County.html" target="_blank" rel="noreferrer">Tripadvisor</a>
-          <a href="/en/privacy">Privacy and cookies</a>
-          <a href="/en/terms">Terms of use</a>
-          <button type="button" data-cookie-settings>Manage cookies</button>
+          <a href="https://www.instagram.com/barmartiri/" target="_blank" rel="noreferrer"><svg class="btn-icon" aria-hidden="true"><use href="#icon-instagram"></use></svg>Instagram</a>
+          <a href="https://www.facebook.com/MartiriBeach/" target="_blank" rel="noreferrer"><svg class="btn-icon" aria-hidden="true"><use href="#icon-facebook"></use></svg>Facebook</a>
+          <a href="https://www.tripadvisor.com/Restaurant_Review-g19102012-d34595569-Reviews-Bar_Martiri-Spille_Tirana_County.html" target="_blank" rel="noreferrer"><svg class="btn-icon" aria-hidden="true"><use href="#icon-tripadvisor"></use></svg>Tripadvisor</a>
+          <a href="/en/privacy"><svg class="btn-icon" aria-hidden="true"><use href="#icon-shield"></use></svg>Privacy and cookies</a>
+          <a href="/en/terms"><svg class="btn-icon" aria-hidden="true"><use href="#icon-doc"></use></svg>Terms of use</a>
+          <button type="button" data-cookie-settings><svg class="btn-icon" aria-hidden="true"><use href="#icon-sliders"></use></svg>Manage cookies</button>
         </nav>
       </div>
     </footer>
 
     <svg class="icon-sprite-defs" aria-hidden="true">
+      <symbol id="icon-instagram" viewBox="0 0 24 24">
+        <rect x="4" y="4" width="16" height="16" rx="4.6"></rect><circle cx="12" cy="12" r="3.6"></circle><circle cx="16.9" cy="7.1" r="1" fill="currentColor" stroke="none"></circle>
+      </symbol>
+      <!-- The Tripadvisor eye motif, and only that. The brow and the beak are
+           what the mark is missing here on purpose: at the 13-15px this icon
+           actually renders at they close up against the eye rings and the whole
+           thing becomes a dark blob. Tested at 64/16/15/13 against a stroked
+           full owl and a filled knockout version -- this is the one that still
+           reads as two eyes at 13px. -->
+      <symbol id="icon-tripadvisor" viewBox="0 0 24 24">
+        <circle cx="8.1" cy="12.4" r="5"></circle>
+        <circle cx="15.9" cy="12.4" r="5"></circle>
+        <circle cx="8.1" cy="12.4" r="1.5" fill="currentColor" stroke="none"></circle>
+        <circle cx="15.9" cy="12.4" r="1.5" fill="currentColor" stroke="none"></circle>
+      </symbol>
+      <symbol id="icon-facebook" viewBox="0 0 24 24">
+        <path d="M14.5 8.5h2.2V5.4h-2.5c-2.3 0-3.6 1.4-3.6 3.7v1.7H8.4v3.1h2.2V21h3.3v-7.1h2.4l.4-3.1h-2.8V9.4c0-.6.2-.9.6-.9Z"></path>
+      </symbol>
+      <symbol id="icon-doc" viewBox="0 0 24 24">
+        <path d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5L13.5 3Z"></path><path d="M13.5 3v5.5H19M8.5 13h7M8.5 17h5"></path>
+      </symbol>
+      <symbol id="icon-phone" viewBox="0 0 24 24">
+        <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6L16.5 13l4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 5.7 2 2 0 0 1 6.5 3.5Z"></path>
+      </symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24">
+        <path d="M4 6h16M4 12h16M4 18h10"></path>
+      </symbol>
+      <symbol id="icon-arrow-out" viewBox="0 0 24 24">
+        <path d="M8 16 16 8M9.5 8H16v6.5"></path>
+      </symbol>
+      <symbol id="icon-map" viewBox="0 0 24 24">
+        <path d="M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4Z"></path><path d="M9 4v13M15 6.5v13"></path>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m4 12.5 5 5L20 6.5"></path>
+      </symbol>
+      <symbol id="icon-x" viewBox="0 0 24 24">
+        <path d="M18 6 6 18M6 6l12 12"></path>
+      </symbol>
+      <symbol id="icon-sliders" viewBox="0 0 24 24">
+        <path d="M4 8h10M18 8h2M4 16h4M12 16h8"></path><circle cx="16" cy="8" r="2"></circle><circle cx="10" cy="16" r="2"></circle>
+      </symbol>
+      <symbol id="icon-bag" viewBox="0 0 24 24">
+        <path d="M6 8h12l-1.2 10.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 8Z"></path><path d="M9 8a3 3 0 0 1 6 0"></path>
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"></path>
+      </symbol>
+      <symbol id="icon-shield" viewBox="0 0 24 24">
+        <path d="M12 3.5 5 6.2v5.3c0 4.3 2.9 7.6 7 9 4.1-1.4 7-4.7 7-9V6.2L12 3.5Z"></path>
+      </symbol>
       <symbol id="category-icon-icecreams" viewBox="0 0 24 24">
         <path d="M9 10a3 3 0 0 1 6 0"></path>
         <path d="M9 10h6l-1.6 9.3a.9.9 0 0 1-.9.7h-.6a.9.9 0 0 1-.9-.7L9 10Z"></path>
@@ -761,7 +836,7 @@
                   <circle cx="12" cy="10" r="2.5"></circle>
                 </svg>
                 <p>The map loads only when you request it.</p>
-                <button class="secondary-button" type="button" data-load-map>Load Google Maps</button>
+                <button class="secondary-button" type="button" data-load-map><svg class="btn-icon" aria-hidden="true"><use href="#icon-map"></use></svg>Load Google Maps</button>
               </div>
               <iframe
                 title="Map of Bar Martiri in Spille"
@@ -794,7 +869,7 @@
                 rel="noreferrer"
               >
                 Get directions
-                <span aria-hidden="true">↗</span>
+               <svg class="btn-icon" aria-hidden="true"><use href="#icon-arrow-out"></use></svg>
               </a>
             </div>
           </div>
@@ -826,18 +901,22 @@
               <h3>Book by phone</h3>
             </div>
             <a class="reservation-phone" href="tel:+355696116063">
+              <svg class="btn-icon" aria-hidden="true"><use href="#icon-phone"></use></svg>
               <span>Call now</span>
               <strong>+355 69 611 6063</strong>
             </a>
           </div>
           <div class="info-links">
             <a href="https://www.instagram.com/barmartiri/" target="_blank" rel="noreferrer">
-              Instagram <strong>@barmartiri ↗</strong>
+              Instagram <strong>@barmartiri<svg class="btn-icon" aria-hidden="true"><use href="#icon-arrow-out"></use></svg></strong>
             </a>
             <a href="https://www.facebook.com/MartiriBeach/" target="_blank" rel="noreferrer">
-              Facebook <strong>Bar Martiri ↗</strong>
+              Facebook <strong>Bar Martiri<svg class="btn-icon" aria-hidden="true"><use href="#icon-arrow-out"></use></svg></strong>
             </a>
-            <button type="button" data-cookie-settings>Cookie preferences</button>
+            <a href="https://www.tripadvisor.com/Restaurant_Review-g19102012-d34595569-Reviews-Bar_Martiri-Spille_Tirana_County.html" target="_blank" rel="noreferrer">
+              Tripadvisor <strong>Leave a review<svg class="btn-icon" aria-hidden="true"><use href="#icon-tripadvisor"></use></svg></strong>
+            </a>
+            <button type="button" data-cookie-settings><svg class="btn-icon" aria-hidden="true"><use href="#icon-sliders"></use></svg>Cookie preferences</button>
           </div>
         </div>
       </section>
@@ -990,7 +1069,7 @@
         <div class="basket-body">
           <div class="basket-items" data-basket-items></div>
           <p class="basket-empty" data-basket-empty>Your basket is empty.</p>
-          <button class="text-link" type="button" data-basket-browse>View the menu</button>
+          <button class="text-link" type="button" data-basket-browse>View the menu<svg class="btn-icon" aria-hidden="true"><use href="#icon-menu"></use></svg></button>
 
           <div class="basket-summary" data-basket-summary hidden>
             <div class="basket-total-row">
@@ -1035,14 +1114,22 @@
                 <input name="note" type="text" maxlength="120">
               </label>
               <p class="form-error" data-checkout-error role="alert"></p>
-              <button class="primary-button" type="submit" data-place-order>Place order</button>
+              <button class="primary-button" type="submit" data-place-order><svg class="btn-icon" aria-hidden="true"><use href="#icon-bag"></use></svg>Place order</button>
             </form>
           </div>
 
-          <div class="basket-status" data-basket-status hidden>
+          <div class="basket-status" data-basket-status data-order-status="pending" hidden>
+            <!-- pathLength="1" on every shape so one stroke-dasharray pair can
+                 draw a circle, a tick and a cross of three different real
+                 lengths. Decorative: the headline above already says which. -->
+            <svg class="status-mark" aria-hidden="true" viewBox="0 0 32 32">
+              <circle cx="16" cy="16" r="14" pathLength="1"></circle>
+              <path class="status-mark-tick" d="m10 16.6 4.3 4.3L22.2 12.4" pathLength="1"></path>
+              <path class="status-mark-cross" d="m11.2 11.2 9.6 9.6M20.8 11.2l-9.6 9.6" pathLength="1"></path>
+            </svg>
             <p class="basket-status-headline" data-basket-status-headline></p>
             <p class="basket-status-detail" data-basket-status-detail></p>
-            <button class="secondary-button" type="button" data-basket-new-order hidden>New order</button>
+            <button class="secondary-button" type="button" data-basket-new-order hidden><svg class="btn-icon" aria-hidden="true"><use href="#icon-plus"></use></svg>New order</button>
           </div>
         </div>
       </section>
@@ -1077,12 +1164,12 @@
         <p id="cookie-description">
           We store your language and your choice on this device. Google Maps only loads if you accept.
         </p>
-        <a class="welcome-terms" href="/en/privacy">Privacy and cookies</a>
+        <a class="welcome-terms" href="/en/privacy"><svg class="btn-icon" aria-hidden="true"><use href="#icon-shield"></use></svg>Privacy and cookies</a>
         <div class="cookie-actions">
           <button class="cookie-button cookie-button--quiet" type="button" data-cookie-choice="essential">
-            Decline
+            <svg class="btn-icon" aria-hidden="true"><use href="#icon-x"></use></svg>Decline
           </button>
-          <button class="cookie-button" type="button" data-cookie-choice="all">Accept</button>
+          <button class="cookie-button" type="button" data-cookie-choice="all"><svg class="btn-icon" aria-hidden="true"><use href="#icon-check"></use></svg>Accept</button>
         </div>
       </div>
     </div>

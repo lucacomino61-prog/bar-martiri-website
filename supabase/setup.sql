@@ -759,6 +759,32 @@ $$;
 revoke all on function public.get_chat_unread_by_customer(uuid) from public;
 grant execute on function public.get_chat_unread_by_customer(uuid) to anon, authenticated;
 
+-- "Bar Martiri is typing". The admin writes this column directly through the
+-- existing "Admins can update conversations" policy -- no RPC on that side --
+-- and the customer reads it through the security-definer function below,
+-- because anon has no select on chat_conversations at all.
+--
+-- A timestamp rather than a boolean: a browser that is closed mid-sentence
+-- never gets to write "false", and a stuck true would leave the dots running
+-- for ever. Freshness is decided at read time instead.
+alter table public.chat_conversations
+  add column if not exists admin_typing_at timestamptz;
+
+create or replace function public.get_chat_typing(p_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(admin_typing_at > now() - interval '8 seconds', false)
+  from public.chat_conversations
+  where id = p_id;
+$$;
+
+revoke all on function public.get_chat_typing(uuid) from public;
+grant execute on function public.get_chat_typing(uuid) to anon, authenticated;
+
 -- Keeps the conversation row (list preview, unread flags) in sync with every
 -- new message, and pings the admin's phone via Web Push on customer messages.
 -- The bearer token here is the public anon key, same convention as

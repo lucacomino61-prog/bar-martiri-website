@@ -69,7 +69,13 @@ for (const [language, locale] of Object.entries(locales)) {
   let page = source
     .replace('<html lang="sq-AL">', `<html lang="${locale.htmlLanguage}" data-initial-language="${language}">`)
     .replace('<head>', '<head>\n    <base href="/">')
-    .replaceAll('href="#', `href="${locale.path}#`)
+    // In-page anchors need the locale prefix because <base href="/"> would
+    // otherwise send them to the Albanian page. SVG <use href="#id"> must NOT
+    // be prefixed: it is a same-document reference to a <symbol> in this very
+    // file, and "/en/#icon-menu" points at another document entirely -- which
+    // silently blanked every weather icon on /it/ and /en/ long before the
+    // button icons arrived.
+    .replace(/(?<!<use )href="#/g, `href="${locale.path}#`)
     .replaceAll('href="/privacy"', `href="${locale.path}privacy"`)
     .replaceAll('href="/terms"', `href="${locale.path}terms"`)
     .replace(

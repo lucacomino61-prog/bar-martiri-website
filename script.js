@@ -408,6 +408,21 @@
       en: 'Terms of use',
     },
     'Kthehu lart': { sq: 'Kthehu lart', it: 'Torna su', en: 'Back to top' },
+    'Na ndiq në Instagram': {
+      sq: 'Na ndiq në Instagram',
+      it: 'Seguici su Instagram',
+      en: 'Follow us on Instagram',
+    },
+    'Bëj një vlerësim në Tripadvisor': {
+      sq: 'Bëj një vlerësim në Tripadvisor',
+      it: 'Lascia una recensione su Tripadvisor',
+      en: 'Leave a review on Tripadvisor',
+    },
+    'Bëj një vlerësim': {
+      sq: 'Bëj një vlerësim',
+      it: 'Lascia una recensione',
+      en: 'Leave a review',
+    },
     'Përditësuar më': { sq: 'Përditësuar më', it: 'Aggiornato il', en: 'Last updated' },
     '26 gusht 2026': { sq: '26 gusht 2026', it: '26 agosto 2026', en: '26 August 2026' },
     'Kopjo adresën': { sq: 'Kopjo adresën', it: 'Copia l’indirizzo', en: 'Copy the address' },
@@ -482,6 +497,11 @@
       en: 'The message wasn’t sent. Check your connection and try again.',
     },
     chatRetry: { sq: 'Provo përsëri', it: 'Riprova', en: 'Try again' },
+    chatTyping: {
+      sq: 'Bar Martiri po shkruan…',
+      it: 'Bar Martiri sta scrivendo…',
+      en: 'Bar Martiri is typing…',
+    },
     copied: { sq: 'U kopjua', it: 'Copiato', en: 'Copied' },
     chatNewMessage: { sq: '1 mesazh i ri', it: '1 nuovo messaggio', en: '1 new message' },
     chatNewMessages: {
@@ -805,6 +825,9 @@
   // How close to the bottom still counts as "following the conversation". Below
   // that, an arriving message must not steal the scroll position.
   const CHAT_FOLLOW_SLACK = 72;
+  // Faster than the message poll: dots that arrive four seconds late have
+  // already stopped being true.
+  const CHAT_TYPING_POLL_INTERVAL = 2500;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const CHAT_DAY_MS = 24 * 60 * 60 * 1000;
   let chatConversationId = localStorage.getItem(CHAT_CONVERSATION_KEY) || null;
@@ -817,6 +840,8 @@
   let chatPendingMessages = [];
   let chatPendingSeed = 0;
   let chatUnseen = 0;
+  let chatAdminTyping = false;
+  let chatTypingTimer = 0;
   // A returning visitor has a conversation id before the thread has arrived.
   // Without this the invitation flashes up for one frame on top of a
   // conversation they are already in the middle of.
@@ -1037,6 +1062,32 @@
       );
     });
 
+    // Appended after the loop rather than as a message, so it never enters the
+    // turn-grouping or the is-new bookkeeping: it is a state, not a line of
+    // conversation.
+    if (chatAdminTyping) {
+      const row = document.createElement('div');
+      row.className = 'chat-row chat-row--admin chat-row--typing is-turn-start is-tail';
+      const bubble = document.createElement('p');
+      bubble.className = 'chat-message-bubble chat-typing';
+      const label = document.createElement('span');
+      label.className = 'sr-only';
+      label.textContent = dynamicText('chatTyping');
+      // Three spans, not three characters: the dots are drawn and animated, and
+      // a screen reader gets the sentence above instead of "dot dot dot".
+      const dots = document.createElement('span');
+      dots.className = 'chat-typing-dots';
+      dots.setAttribute('aria-hidden', 'true');
+      dots.append(
+        document.createElement('i'),
+        document.createElement('i'),
+        document.createElement('i')
+      );
+      bubble.append(label, dots);
+      row.append(bubble);
+      chatMessagesEl.append(row);
+    }
+
     // Monotonic: a thread that shrinks (a deletion, or a pending message
     // handing over to its confirmed twin) must not make already-seen bubbles
     // animate again when it regrows.
@@ -1154,6 +1205,40 @@
     if (chatUnreadBadge) chatUnreadBadge.hidden = true;
   }
 
+  async function checkChatTyping() {
+    if (!chatConversationId || !supabaseConfig.url || !supabaseConfig.publishableKey) return;
+    try {
+      const response = await fetch(`${supabaseConfig.url}/rest/v1/rpc/get_chat_typing`, {
+        method: 'POST',
+        headers: chatRestHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ p_id: chatConversationId }),
+      });
+      if (!response.ok) {
+        // The function is missing until setup.sql has been re-run. Stop asking
+        // rather than throwing a 404 every 2.5 seconds for the whole visit.
+        if (response.status === 404) stopChatTypingPolling();
+        return;
+      }
+      const typing = Boolean(await response.json());
+      if (typing === chatAdminTyping) return;
+      chatAdminTyping = typing;
+      renderChatThread();
+    } catch {
+      // A chat without the dots is better than a chat that breaks.
+    }
+  }
+
+  function stopChatTypingPolling() {
+    window.clearInterval(chatTypingTimer);
+    chatTypingTimer = 0;
+    chatAdminTyping = false;
+  }
+
+  function startChatTypingPolling() {
+    window.clearInterval(chatTypingTimer);
+    chatTypingTimer = window.setInterval(() => void checkChatTyping(), CHAT_TYPING_POLL_INTERVAL);
+  }
+
   function stopChatPolling() {
     window.clearInterval(chatPollTimer);
     chatPollTimer = 0;
@@ -1206,10 +1291,12 @@
     await loadChatMessages();
     await markChatReadByCustomer();
     startChatPolling();
+    startChatTypingPolling();
   }
 
   function closeChatPanel() {
     stopChatPolling();
+    stopChatTypingPolling();
     window.visualViewport?.removeEventListener('resize', syncChatViewport);
     window.visualViewport?.removeEventListener('scroll', syncChatViewport);
     chatPanelEl?.classList.remove('is-keyboard');
@@ -1616,25 +1703,62 @@
     if (basketTotalEl) basketTotalEl.textContent = formatPrice(cartTotal()) || '0 ALL';
   }
 
-  function showOrderStatus(order) {
+  // Waiting -> confirmed is the moment the whole product exists for: someone on
+  // a sunbed finds out the bar heard them. It used to swap two lines of text in
+  // a card that never moved, which reads like a typo being corrected rather
+  // than an answer arriving. The words now leave before the new ones arrive,
+  // and the card takes the colour of the outcome.
+  const ORDER_STATUS_SWAP = 190;
+  let renderedOrderStatus = null;
+
+  function writeOrderStatus(status) {
     if (basketStatusHeadlineEl) {
       basketStatusHeadlineEl.textContent =
-        order.status === 'confirmed'
+        status === 'confirmed'
           ? dynamicText('orderConfirmedHeadline')
-          : order.status === 'cancelled'
+          : status === 'cancelled'
             ? dynamicText('orderCancelledHeadline')
             : dynamicText('orderSentHeadline');
     }
     if (basketStatusDetailEl) {
       basketStatusDetailEl.textContent =
-        order.status === 'confirmed'
+        status === 'confirmed'
           ? dynamicText('orderConfirmedDetail')
-          : order.status === 'cancelled'
+          : status === 'cancelled'
             ? dynamicText('orderCancelledDetail')
             : dynamicText('orderSentDetail');
     }
+    if (basketStatusEl) basketStatusEl.dataset.orderStatus = status;
+  }
+
+  function showOrderStatus(order) {
+    const status = order.status || 'pending';
+    // Only a change that lands while the card is already on screen is worth
+    // animating. The first render is the card's own entrance, which has one.
+    const arriving =
+      Boolean(basketStatusEl) &&
+      !basketStatusEl.hidden &&
+      renderedOrderStatus !== null &&
+      renderedOrderStatus !== status;
+    renderedOrderStatus = status;
+
+    if (arriving && !reducedMotion) {
+      basketStatusEl.classList.add('is-swapping');
+      window.setTimeout(() => {
+        writeOrderStatus(status);
+        basketStatusEl.classList.remove('is-swapping');
+        // Restarting an animation needs the class gone for a frame, or the
+        // browser sees no change and never replays it.
+        basketStatusEl.classList.remove('is-settling');
+        void basketStatusEl.offsetWidth;
+        basketStatusEl.classList.add('is-settling');
+      }, ORDER_STATUS_SWAP);
+    } else {
+      writeOrderStatus(status);
+    }
+
     if (basketNewOrderButton) {
-      basketNewOrderButton.hidden = order.status === 'pending';
+      basketNewOrderButton.hidden = status === 'pending';
       basketNewOrderButton.textContent = dynamicText('newOrder');
     }
     if (basketStatusEl) basketStatusEl.hidden = false;
@@ -1930,6 +2054,9 @@
 
   basketNewOrderButton?.addEventListener('click', () => {
     pendingOrderId = null;
+    // Or the next order's first "Order sent!" would be read as a change from
+    // the last order's outcome and animate as if the bar had just answered.
+    renderedOrderStatus = null;
     stopOrderStatusPolling();
     try {
       localStorage.removeItem(PENDING_ORDER_KEY);
@@ -2820,6 +2947,10 @@
     if (activePanel === 'chat' && name !== 'chat') closeChatPanel();
     activePanel = name;
     updateWhatsAppVisibility();
+    // The back-to-top button is gated on !activePanel, and nothing scrolls when
+    // a panel opens -- without this it hangs over the panel offering to scroll
+    // the page behind it.
+    syncScrollAffordances();
     panelLayer.hidden = false;
     target.hidden = false;
     target.scrollTop = 0;
@@ -2874,6 +3005,7 @@
     if (activePanel === 'chat') closeChatPanel();
     activePanel = null;
     updateWhatsAppVisibility();
+    syncScrollAffordances();
     panelLayer.classList.remove('is-visible');
     closingPanel?.classList.remove('is-open');
     document.body.classList.remove('is-panel-open');
@@ -3388,6 +3520,45 @@
      row that the bar can read.
      ------------------------------------------------------------------------- */
 
+  /* -------------------------------------------------------------------------
+     Boot screen
+
+     The page paints in about a quarter of a second, so this is a greeting, not
+     a progress bar, and the whole job is getting it out of the way before it
+     becomes a delay. It is armed only once per tab, so switching language --
+     which is a full navigation -- does not replay it.
+
+     styles.css owns the failsafe: the curtain is removed by a keyframe at 2.6s
+     whether or not any of this runs.
+     ------------------------------------------------------------------------- */
+
+  const BOOT_KEY = 'barMartiri.booted.v1';
+  // Long enough that the scoops actually land, short enough that nobody waits.
+  const BOOT_MIN_VISIBLE = 1150;
+
+  (function runBootScreen() {
+    const boot = document.querySelector('[data-boot]');
+    if (!boot) return;
+    let seen = true;
+    try {
+      seen = sessionStorage.getItem(BOOT_KEY) === '1';
+      sessionStorage.setItem(BOOT_KEY, '1');
+    } catch {
+      // Private mode: show it, once, rather than not at all.
+      seen = false;
+    }
+    if (seen || reducedMotion) return;
+
+    boot.classList.add('is-armed');
+    const startedAt = Date.now();
+    const dismiss = () => {
+      const remaining = Math.max(0, BOOT_MIN_VISIBLE - (Date.now() - startedAt));
+      window.setTimeout(() => boot.classList.add('is-done'), remaining);
+    };
+    if (document.readyState === 'complete') dismiss();
+    else window.addEventListener('load', dismiss, { once: true });
+  })();
+
   const CAMPAIGN_KEY = 'barMartiri.campaign.v1';
   const CAMPAIGN_PARAMS = [
     'utm_source',
@@ -3445,6 +3616,8 @@
   const scrollProgressEl = document.querySelector('[data-scroll-progress]');
   const toTopButton = document.querySelector('[data-to-top]');
   const TO_TOP_AT = 900;
+  let toTopShown = false;
+  let toTopExitTimer = 0;
 
   function syncScrollAffordances() {
     const max = document.documentElement.scrollHeight - window.innerHeight;
@@ -3453,16 +3626,32 @@
 
     if (!toTopButton) return;
     const wanted = window.scrollY > TO_TOP_AT && !activePanel;
-    if (wanted === !toTopButton.hidden) return;
+    // Tracked separately from .hidden, because during the exit the button is
+    // still rendered while already being on its way out. Reading .hidden here
+    // would say "shown" and a scroll back down would do nothing.
+    if (wanted === toTopShown) return;
+    toTopShown = wanted;
+    window.clearTimeout(toTopExitTimer);
+
     if (wanted) {
       toTopButton.hidden = false;
       // Unhide first, then drop the entering class on the next frame, or the
       // browser has no start value to animate from and the button pops.
       toTopButton.classList.add('is-entering');
       requestAnimationFrame(() => toTopButton.classList.remove('is-entering'));
-    } else {
-      toTopButton.hidden = true;
+      return;
     }
+
+    // It arrives with motion, so it leaves the same way rather than blinking
+    // out. The timer is the authority rather than transitionend: reduced
+    // motion clamps the transition to 0.01ms, and a button scrolled past while
+    // the tab is in the background may never fire the event at all.
+    toTopButton.classList.add('is-entering');
+    toTopExitTimer = window.setTimeout(() => {
+      if (toTopShown) return;
+      toTopButton.hidden = true;
+      toTopButton.classList.remove('is-entering');
+    }, reducedMotion ? 0 : 240);
   }
 
   // The WhatsApp button owns the same corner, and only during opening hours.
